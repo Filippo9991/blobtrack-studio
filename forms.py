@@ -7,6 +7,7 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField
 from wtforms import (
     BooleanField,
+    HiddenField,
     IntegerField,
     PasswordField,
     SelectField,
@@ -121,3 +122,10 @@ class AIPresetForm(FlaskForm):
         validators=[DataRequired(), Length(min=3, max=400)],
     )
     submit = SubmitField("Genera preset")
+
+
+class SaveAIPresetForm(FlaskForm):
+    """Salva un preset generato dall'AI (il config viaggia in un campo nascosto)."""
+    name = StringField("Nome preset", validators=[DataRequired(), Length(max=80)])
+    config = HiddenField()
+    submit = SubmitField("Salva preset")

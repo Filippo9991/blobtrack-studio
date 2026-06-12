@@ -22,8 +22,9 @@ class Config:
     # Riconnette automaticamente se il database ha chiuso la connessione (utile su Postgres)
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True}
 
-    # Provider LLM gratuito per l'AI Preset Generator
+    # Provider LLM gratuito (Groq) per l'AI Preset Generator
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+    GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 
     # Limite dimensione upload: 8 MB
     MAX_CONTENT_LENGTH = 8 * 1024 * 1024
