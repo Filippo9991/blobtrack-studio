@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}Profilo — BlobTrack Studio{% endblock %}
+
+{% block content %}
+<div class="section-head">
+  <h1>Il tuo profilo</h1>
+</div>
+
+<div class="card" style="margin-bottom: var(--space-lg);">
+  <p><strong>Username:</strong> {{ user.username }}</p>
+  <p><strong>Email:</strong> {{ user.email }}</p>
+  <p><strong>Iscritto dal:</strong> {{ user.created_at.strftime('%d/%m/%Y') }}</p>
+  <p><strong>Creazioni salvate:</strong> {{ user.creations|length }}</p>
+  <p><strong>Preset salvati:</strong> {{ user.presets|length }}</p>
+  <p>
+    <strong>Consenso cookie:</strong>
+    {% if user.cookie_consent %}Accettato{% else %}Non ancora espresso{% endif %}
+  </p>
+</div>
+
+<div class="card" style="border-color: var(--color-danger);">
+  <h3 style="color: var(--color-danger);">Zona pericolosa</h3>
+  <p class="form-hint" style="margin-bottom: var(--space-md);">
+    L'eliminazione dell'account è definitiva e cancella anche tutte le tue
+    creazioni e preset. Questa azione non può essere annullata.
+  </p>
+  <form method="post" action="{{ url_for('auth.delete_account') }}"
+        onsubmit="return confirm('Eliminare davvero l\'account e tutti i dati? L\'azione è irreversibile.');">
+    {{ delete_form.hidden_tag() }}
+    {{ delete_form.submit(class="btn btn-danger") }}
+  </form>
+</div>
+{% endblock %}

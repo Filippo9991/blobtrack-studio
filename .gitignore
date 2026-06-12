@@ -1,0 +1,23 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Flask / DB
+instance/
+*.db
+*.sqlite3
+
+# Secrets
+.env
+
+# Uploads (runtime, ephemeral)
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Archived legacy project (not deployed, kept local only)
+legacy/
+
+# OS
+.DS_Store

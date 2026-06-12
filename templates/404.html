@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}404 — Pagina non trovata{% endblock %}
+
+{% block content %}
+<div class="empty-state" style="margin-top: var(--space-xl);">
+  <h1 style="color: var(--color-primary);">404</h1>
+  <h3>Questa pagina non esiste</h3>
+  <p>Forse il link è vecchio o l'indirizzo è stato digitato male.</p>
+  {% if current_user %}
+    <a href="{{ url_for('auth.profile') }}" class="btn">Torna al profilo</a>
+  {% else %}
+    <a href="{{ url_for('main.index') }}" class="btn">Torna alla home</a>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}500 — Errore del server{% endblock %}
+
+{% block content %}
+<div class="empty-state" style="margin-top: var(--space-xl);">
+  <h1 style="color: var(--color-danger);">500</h1>
+  <h3>Qualcosa è andato storto</h3>
+  <p>Si è verificato un errore interno. La sessione è stata ripristinata: riprova tra poco.</p>
+  <a href="{{ url_for('main.index') }}" class="btn">Torna alla home</a>
+</div>
+{% endblock %}

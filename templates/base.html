@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}BlobTrack Studio{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💠</text></svg>" />
+</head>
+<body>
+  <nav class="navbar">
+    <a href="{{ url_for('main.index') }}" class="brand">Blob<span>Track</span></a>
+    <div class="nav-links">
+      {% if current_user %}
+        {# Le voci Studio/Galleria/Preset/AI vengono aggiunte nelle fasi successive #}
+        <a href="{{ url_for('auth.profile') }}">{{ current_user.username }}</a>
+        <a href="{{ url_for('auth.logout') }}">Logout</a>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}">Login</a>
+        <a href="{{ url_for('auth.register') }}" class="btn">Registrati</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flashes">
+          {% for category, message in messages %}
+            <li class="flash flash-{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    BlobTrack Studio · Computer vision blob detection · Python · Flask
+  </footer>
+
+  {% block cookie_banner %}{% endblock %}
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

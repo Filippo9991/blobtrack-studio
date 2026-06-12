@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Registrati — BlobTrack Studio{% endblock %}
+
+{% block content %}
+<div class="card auth-card">
+  <h1>Crea un account</h1>
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="form-group">
+      {{ form.username.label }}
+      {{ form.username(placeholder="il_tuo_nome") }}
+      {% for error in form.username.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="form-group">
+      {{ form.email.label }}
+      {{ form.email(placeholder="nome@email.com") }}
+      {% for error in form.email.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="form-group">
+      {{ form.password.label }}
+      {{ form.password() }}
+      {% for error in form.password.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="form-group">
+      {{ form.confirm.label }}
+      {{ form.confirm() }}
+      {% for error in form.confirm.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+    </div>
+
+    {{ form.submit(class="btn btn-block") }}
+  </form>
+  <p class="form-hint" style="margin-top: var(--space-md);">
+    Hai già un account? <a href="{{ url_for('auth.login') }}">Accedi</a>
+  </p>
+</div>
+{% endblock %}

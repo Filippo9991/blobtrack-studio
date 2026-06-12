@@ -1,0 +1,12 @@
+Flask
+Flask-SQLAlchemy
+Flask-WTF
+WTForms
+email-validator
+python-dotenv
+requests
+opencv-python-headless
+numpy
+Pillow
+gunicorn
+psycopg2-binary
