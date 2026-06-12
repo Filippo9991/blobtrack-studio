@@ -36,14 +36,20 @@ def create_app(config_name=None):
     app.register_blueprint(studio_bp)
     app.register_blueprint(assistant_bp)
 
-    # --- current_user disponibile in tutti i template ---
+    # --- variabili globali disponibili in tutti i template ---
     @app.context_processor
-    def inject_current_user():
+    def inject_globals():
         from models import User
 
         uid = session.get("user_id")
         user = db.session.get(User, uid) if uid else None
-        return {"current_user": user}
+
+        # Il consenso può venire dalla sessione (utenti anonimi) o dal DB (utenti loggati)
+        consent_given = bool(session.get("cookie_consent"))
+        if user and user.cookie_consent:
+            consent_given = True
+
+        return {"current_user": user, "show_cookie_banner": not consent_given}
 
     # --- Pagine di errore custom ---
     @app.errorhandler(404)

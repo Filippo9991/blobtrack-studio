@@ -40,7 +40,18 @@
     BlobTrack Studio · Computer vision blob detection · Python · Flask
   </footer>
 
-  {% block cookie_banner %}{% endblock %}
+  {% if show_cookie_banner %}
+  <div class="cookie-banner" id="cookie-banner">
+    <p>
+      Usiamo cookie tecnici e di sessione per gestire l'accesso e ricordare le tue
+      preferenze. Puoi accettare il trattamento dei tuoi dati o rifiutare.
+    </p>
+    <form class="cookie-actions" method="post" action="{{ url_for('main.consent') }}" id="cookie-form">
+      <button type="submit" name="action" value="reject" class="btn btn-secondary">Rifiuta</button>
+      <button type="submit" name="action" value="accept" class="btn">Accetta</button>
+    </form>
+  </div>
+  {% endif %}
 
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   {% block scripts %}{% endblock %}
