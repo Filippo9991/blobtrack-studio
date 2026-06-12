@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Studio — BlobTrack{% endblock %}
+
+{% macro field(f) %}
+  <div class="form-group">
+    {{ f.label }}
+    {{ caller() }}
+    {% for error in f.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+  </div>
+{% endmacro %}
+
+{% block content %}
+<div class="section-head">
+  <h1>Studio</h1>
+  <a href="{{ url_for('studio.presets') }}" class="btn btn-secondary">I tuoi preset</a>
+</div>
+
+<div class="studio-grid">
+  <div class="preview">
+    {% if preview %}
+      <img src="{{ preview }}" alt="Anteprima elaborata" />
+    {% else %}
+      <div class="empty-state" style="border: none;">
+        <h3>Nessuna anteprima</h3>
+        <p>Carica un'immagine, regola i parametri e premi <strong>Anteprima</strong>.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {{ form.hidden_tag() }}
+
+      {% call field(form.image) %}{{ form.image() }}{% endcall %}
+
+      <h3>Rilevamento</h3>
+      {% call field(form.track_mode) %}{{ form.track_mode() }}{% endcall %}
+      {% call field(form.threshold) %}{{ form.threshold(type="range", min=0, max=255) }}{% endcall %}
+      {% call field(form.min_size) %}{{ form.min_size() }}{% endcall %}
+      {% call field(form.max_blobs) %}{{ form.max_blobs() }}{% endcall %}
+
+      <h3>Forma &amp; stile</h3>
+      {% call field(form.blob_shape) %}{{ form.blob_shape() }}{% endcall %}
+      {% call field(form.blob_style) %}{{ form.blob_style() }}{% endcall %}
+      {% call field(form.blob_color) %}{{ form.blob_color(type="color") }}{% endcall %}
+      {% call field(form.blob_thickness) %}{{ form.blob_thickness() }}{% endcall %}
+      {% call field(form.corner_radius) %}{{ form.corner_radius() }}{% endcall %}
+
+      <h3>Wireframe</h3>
+      {% call field(form.wf_type) %}{{ form.wf_type() }}{% endcall %}
+      {% call field(form.wf_style) %}{{ form.wf_style() }}{% endcall %}
+      {% call field(form.wf_color) %}{{ form.wf_color(type="color") }}{% endcall %}
+      {% call field(form.wiring_density) %}{{ form.wiring_density() }}{% endcall %}
+
+      <h3>Look</h3>
+      {% call field(form.inner_style) %}{{ form.inner_style() }}{% endcall %}
+      {% call field(form.bg_mode) %}{{ form.bg_mode() }}{% endcall %}
+      {% call field(form.label_type) %}{{ form.label_type() }}{% endcall %}
+      <div class="form-group">
+        <label>{{ form.show_center() }} {{ form.show_center.label.text }}</label>
+      </div>
+
+      <h3>Salvataggio</h3>
+      {% call field(form.preset_name) %}{{ form.preset_name(placeholder="Nome creazione o preset") }}{% endcall %}
+
+      <div style="display:flex; gap: var(--space-sm); flex-wrap: wrap;">
+        <button type="submit" name="action" value="preview" class="btn">Anteprima</button>
+        <button type="submit" name="action" value="save" class="btn btn-secondary">Salva nella galleria</button>
+        <button type="submit" name="action" value="save_preset" class="btn btn-secondary">Salva come preset</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

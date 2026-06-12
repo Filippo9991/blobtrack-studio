@@ -12,7 +12,10 @@
     <a href="{{ url_for('main.index') }}" class="brand">Blob<span>Track</span></a>
     <div class="nav-links">
       {% if current_user %}
-        {# Le voci Studio/Galleria/Preset/AI vengono aggiunte nelle fasi successive #}
+        <a href="{{ url_for('studio.studio') }}">Studio</a>
+        <a href="{{ url_for('studio.dashboard') }}">Galleria</a>
+        <a href="{{ url_for('studio.presets') }}">Preset</a>
+        {# La voce AI viene aggiunta nella Fase 5 #}
         <a href="{{ url_for('auth.profile') }}">{{ current_user.username }}</a>
         <a href="{{ url_for('auth.logout') }}">Logout</a>
       {% else %}
