@@ -22,33 +22,24 @@ from services.frame_engine import render_image
 
 studio_bp = Blueprint("studio", __name__)
 
-# Campi della StudioForm che compongono il config del motore (tutto tranne image/preset_name/submit)
-SETTING_FIELDS = [
-    "detection_engine", "yolo_model_file", "use_high_res", "track_mode", "threshold",
-    "threshold_mode", "color_target_hex", "color_target_tolerance", "morph_kernel_size",
-    "edge_low", "edge_high", "min_blob_size", "max_blob_size", "max_blobs",
-    "preprocess_enabled", "preprocess_method", "preprocess_strength",
-    "blob_shape", "blob_color", "blob_thickness", "blob_style", "corner_radius", "blob_dot_gap",
-    "wf_type", "wf_color", "wf_thickness", "wf_style", "wf_dot_gap", "wiring_density", "end_cap",
-    "show_center", "center_color", "center_shape", "center_style", "center_size_level",
-    "label_type", "text_color", "custom_text", "font_weight", "label_pos", "text_size",
-    "text_outline", "text_outline_color",
-    "inner_style", "bg_mode", "opacity",
-    "glow_enabled", "glow_intensity", "glow_radius",
-    "mp_pose_enabled", "mp_hands_enabled", "mp_face_enabled", "mp_confidence",
-    "mp_num_poses", "mp_pose_num_points", "mp_hands_num_points", "mp_num_faces",
-    "mp_face_num_points", "mp_blob_size", "mp_merge_distance",
-]
+# Campi della StudioForm che NON fanno parte del config del motore.
+# I campi-config sono quindi "tutti gli altri": il form è l'unica fonte di verità
+# (aggiungere un parametro alla StudioForm lo include automaticamente).
+_NON_CONFIG_FIELDS = {"csrf_token", "image", "preset_name", "submit"}
 
 
 def _form_to_settings(form):
-    return {field: getattr(form, field).data for field in SETTING_FIELDS}
+    return {
+        name: field.data
+        for name, field in form._fields.items()
+        if name not in _NON_CONFIG_FIELDS
+    }
 
 
 def _apply_settings_to_form(form, settings):
-    for field in SETTING_FIELDS:
-        if field in settings and settings[field] is not None:
-            getattr(form, field).data = settings[field]
+    for name, field in form._fields.items():
+        if name not in _NON_CONFIG_FIELDS and settings.get(name) is not None:
+            field.data = settings[name]
 
 
 @studio_bp.route("/studio", methods=["GET", "POST"])
@@ -95,7 +86,7 @@ def studio():
         return render_template("studio.html", form=form, preview=None)
 
     try:
-        png_bytes, _ = render_image(file.read(), settings)
+        png_bytes = render_image(file.read(), settings)
     except ValueError as exc:
         flash(str(exc), "error")
         return render_template("studio.html", form=form, preview=None)

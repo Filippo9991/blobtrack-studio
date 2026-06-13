@@ -9,7 +9,7 @@ import json
 import requests
 from flask import current_app
 
-import studio_options as opt
+from engine import options as opt
 
 # Endpoint OpenAI-compatibile di Groq
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -46,7 +46,7 @@ def _system_prompt():
 
 def _validate(raw):
     """Tiene solo i campi noti al motore e ne coercizza/valida i valori."""
-    from schemas import ProcessingConfig
+    from engine import ProcessingConfig
 
     allowed = set(ProcessingConfig.model_fields)
     clean = {k: v for k, v in raw.items() if k in allowed}

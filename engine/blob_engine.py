@@ -6,9 +6,9 @@ import subprocess
 from collections import deque
 from dataclasses import dataclass, field
 from types import SimpleNamespace
-import frame_processor
-import audio_processor
-from signal_math import OneEuroFilter
+from . import frame_processor
+from . import audio_processor
+from .signal_math import OneEuroFilter
 
 try:
     from ultralytics import YOLO
@@ -1887,6 +1887,21 @@ class LiveEngine:
         # Gesture state
         self._gesture_scale = 1.0
         self._gesture_alpha = 0.3
+
+    def reset_state(self):
+        """Azzera lo stato di tracking per-job (usato in modalità immagine).
+
+        I modelli pesanti (YOLO/MediaPipe) restano in cache; si azzerano solo
+        tracker, trail e contatori, così richieste-immagine indipendenti non si
+        contaminano a vicenda. La modalità video mantiene invece lo stato per job.
+        """
+        self.trackers = {}
+        self.tracker_history = {}
+        self.tracker_velocity = {}
+        self.next_id = 0
+        self.trail_history = {}
+        self._frame_count = 0
+        self._gesture_scale = 1.0
 
     def _ensure_mp_solutions(self, config):
         """Lazy init/teardown MediaPipe Task objects based on config flags.

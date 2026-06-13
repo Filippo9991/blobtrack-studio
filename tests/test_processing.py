@@ -5,7 +5,7 @@ from services.frame_engine import render_image
 
 
 def test_render_color_returns_png(sample_png):
-    png, _ = render_image(
+    png = render_image(
         sample_png, {"detection_engine": "color", "threshold": 120, "inner_style": "acid"}
     )
     assert png[:8] == b"\x89PNG\r\n\x1a\n"
@@ -13,7 +13,7 @@ def test_render_color_returns_png(sample_png):
 
 def test_render_with_partial_config_uses_defaults(sample_png):
     # Config parziale: ProcessingConfig riempie i default mancanti
-    png, _ = render_image(sample_png, {"blob_shape": "rectangular"})
+    png = render_image(sample_png, {"blob_shape": "rectangular"})
     assert png[:4] == b"\x89PNG"
 
 
