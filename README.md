@@ -30,7 +30,7 @@ Progetto d'esame: applicazione web completa con **Python + Flask**.
 |--------|-----------|
 | Backend | Python 3.11, Flask, Flask-SQLAlchemy, Flask-WTF |
 | Database | SQLite (sviluppo) · PostgreSQL (produzione) |
-| Computer vision | OpenCV (`opencv-python-headless`), NumPy |
+| Computer vision | OpenCV (`opencv-contrib-python-headless`), NumPy, ultralytics (YOLO), MediaPipe |
 | Template | Jinja2 (con template inheritance) |
 | API esterna | Groq (LLM gratuito, endpoint OpenAI-compatibile) |
 | Deploy | Gunicorn, Render |
@@ -90,7 +90,7 @@ Nessun valore sensibile è committato: `.env` è nel `.gitignore`, ed è present
 1. Crea un database **PostgreSQL** (Free) e copia la *Internal Database URL*.
 2. Crea un **Web Service** collegato a questo repository GitHub:
    - Build Command: `pip install -r requirements.txt`
-   - Start Command: `gunicorn app:app`
+   - Start Command: `gunicorn wsgi:app`
 3. Imposta le **Environment Variables**: `SECRET_KEY`, `DATABASE_URL`, `GROQ_API_KEY`, `FLASK_ENV=production`.
 4. Deploy. Le tabelle vengono create automaticamente all'avvio (`db.create_all()` idempotente).
 
@@ -98,17 +98,28 @@ Nessun valore sensibile è committato: `.env` è nel `.gitignore`, ed è present
 
 ## 📁 Struttura del progetto
 
+Due package separati: `app/` (web) dipende da `engine/` (CV), mai il contrario.
+
 ```
-app.py                 Application factory + error handlers
-config.py              Configurazione multi-ambiente
-extensions.py          Istanza SQLAlchemy
-models.py              User, Creation, Preset
-forms.py               Form Flask-WTF
-decorators.py          @login_required
-blob_engine_core.py    Primitive OpenCV (blob detection + styling)
-services/              image_processing, ai_presets
-blueprints/            main, auth, studio, assistant
-templates/             Template Jinja2 (base + pagine)
-static/                CSS (design system) e JS
-tests/                 Suite pytest
+wsgi.py                entrypoint produzione (gunicorn wsgi:app)
+config.py              configurazione multi-ambiente
+
+app/                   APPLICAZIONE WEB (Flask)
+  __init__.py          application factory create_app() + error handlers
+  extensions.py        istanza SQLAlchemy
+  models.py            User, Creation, Preset
+  forms.py             form Flask-WTF (StudioForm = unica fonte dei campi)
+  decorators.py        @login_required
+  blueprints/          main, auth, studio, assistant
+  services/            frame_engine (adapter web→engine), ai_presets (Groq)
+  templates/           Jinja2 (base + pagine, stile "acid")
+  static/              CSS (design system) e JS
+
+engine/                MOTORE COMPUTER VISION (indipendente da Flask)
+  __init__.py          API pubblica: ProcessingConfig, options, process_image_frame, run_video
+  blob_engine.py       detection (color/YOLO/MediaPipe/silhouette/edge) + rendering
+  frame_processor.py audio_processor.py signal_math.py schemas.py options.py
+  models/              modelli MediaPipe (.task / .tflite)
+
+tests/                 suite pytest
 ```

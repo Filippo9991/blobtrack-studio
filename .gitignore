@@ -24,3 +24,7 @@ legacy/
 
 # Claude Code local settings
 .claude/
+
+# YOLO weights: solo yolov8n (default leggero) è committato; m/x auto-download a runtime
+yolov8m.pt
+yolov8x.pt
