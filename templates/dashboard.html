@@ -1,36 +1,36 @@
 {% extends "base.html" %}
-
 {% block title %}Galleria — BlobTrack{% endblock %}
 
 {% block content %}
-<div class="section-head">
-  <h1>La tua galleria</h1>
-  <a href="{{ url_for('studio.studio') }}" class="btn">Nuova creazione</a>
-</div>
+<div class="container">
+  <div class="section-head">
+    <h1>Galleria</h1>
+    <a href="{{ url_for('studio.studio') }}" class="btn">Nuova creazione</a>
+  </div>
 
-{% if creations %}
-  <div class="grid">
-    {% for c in creations %}
-      <div class="tile">
-        <img src="{{ url_for('studio.creation_image', creation_id=c.id) }}" alt="{{ c.title }}" loading="lazy" />
-        <div class="tile-body">
-          <div class="tile-title">{{ c.title }}</div>
-          <div class="tile-meta">{{ c.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
-          <form method="post" action="{{ url_for('studio.delete_creation', creation_id=c.id) }}"
-                onsubmit="return confirm('Eliminare questa creazione?');"
-                style="margin-top: var(--space-sm);">
-            {{ delete_form.hidden_tag() }}
-            <button type="submit" class="btn btn-danger">Elimina</button>
-          </form>
+  {% if creations %}
+    <div class="grid">
+      {% for c in creations %}
+        <div class="tile">
+          <img src="{{ url_for('studio.creation_image', creation_id=c.id) }}" alt="{{ c.title }}" loading="lazy" />
+          <div class="tile-body">
+            <div class="tile-title">{{ c.title }}</div>
+            <div class="tile-meta">{{ c.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
+            <form method="post" action="{{ url_for('studio.delete_creation', creation_id=c.id) }}"
+                  onsubmit="return confirm('Eliminare questa creazione?');" style="margin-top: var(--space-sm);">
+              {{ delete_form.hidden_tag() }}
+              <button type="submit" class="btn btn-danger btn-sm">Elimina</button>
+            </form>
+          </div>
         </div>
-      </div>
-    {% endfor %}
-  </div>
-{% else %}
-  <div class="empty-state">
-    <h3>Nessuna creazione salvata</h3>
-    <p>Le immagini che elabori e salvi appariranno qui.</p>
-    <a href="{{ url_for('studio.studio') }}" class="btn">Apri lo Studio</a>
-  </div>
-{% endif %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h3>Nessuna creazione</h3>
+      <p>Le immagini che elabori e salvi appariranno qui.</p>
+      <a href="{{ url_for('studio.studio') }}" class="btn">Apri lo Studio</a>
+    </div>
+  {% endif %}
+</div>
 {% endblock %}

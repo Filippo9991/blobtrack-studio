@@ -4,12 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}BlobTrack Studio{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💠</text></svg>" />
 </head>
 <body>
   <nav class="navbar">
-    <a href="{{ url_for('main.index') }}" class="brand">Blob<span>Track</span></a>
+    <a href="{{ url_for('main.index') }}" class="brand">BlobTrack<span class="tag">V3</span></a>
     <div class="nav-links">
       {% if current_user %}
         <a href="{{ url_for('studio.studio') }}">Studio</a>
@@ -20,28 +23,28 @@
         <a href="{{ url_for('auth.logout') }}">Logout</a>
       {% else %}
         <a href="{{ url_for('auth.login') }}">Login</a>
-        <a href="{{ url_for('auth.register') }}" class="btn">Registrati</a>
+        <a href="{{ url_for('auth.register') }}" class="cta">Registrati</a>
       {% endif %}
     </div>
   </nav>
 
-  <main class="container">
+  <main class="content">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <ul class="flashes">
-          {% for category, message in messages %}
-            <li class="flash flash-{{ category }}">{{ message }}</li>
-          {% endfor %}
-        </ul>
+        <div class="container" style="padding-bottom: 0;">
+          <ul class="flashes">
+            {% for category, message in messages %}
+              <li class="flash flash-{{ category }}">{{ message }}</li>
+            {% endfor %}
+          </ul>
+        </div>
       {% endif %}
     {% endwith %}
 
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="footer">
-    BlobTrack Studio · Computer vision blob detection · Python · Flask
-  </footer>
+  <footer class="footer">BlobTrack Studio — computer vision blob detection — Python · Flask</footer>
 
   {% if show_cookie_banner %}
   <div class="cookie-banner" id="cookie-banner">
@@ -50,8 +53,8 @@
       preferenze. Puoi accettare il trattamento dei tuoi dati o rifiutare.
     </p>
     <form class="cookie-actions" method="post" action="{{ url_for('main.consent') }}" id="cookie-form">
-      <button type="submit" name="action" value="reject" class="btn btn-secondary">Rifiuta</button>
-      <button type="submit" name="action" value="accept" class="btn">Accetta</button>
+      <button type="submit" name="action" value="reject" class="btn btn-ghost btn-sm">Rifiuta</button>
+      <button type="submit" name="action" value="accept" class="btn btn-sm">Accetta</button>
     </form>
   </div>
   {% endif %}

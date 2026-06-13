@@ -1,12 +1,13 @@
 {% extends "base.html" %}
-
 {% block title %}413 — File troppo grande{% endblock %}
 
 {% block content %}
-<div class="empty-state" style="margin-top: var(--space-xl);">
-  <h1 style="color: var(--color-warning);">413</h1>
-  <h3>Immagine troppo pesante</h3>
-  <p>Il file supera il limite di 8&nbsp;MB. Comprimi l'immagine e riprova.</p>
-  <a href="{{ url_for('main.index') }}" class="btn">Torna alla home</a>
+<div class="container">
+  <div class="empty-state" style="margin-top: var(--space-xl);">
+    <h1 style="color: var(--warning); font-size: 3rem;">413</h1>
+    <h3>Immagine troppo pesante</h3>
+    <p>Il file supera il limite di 8&nbsp;MB. Comprimi l'immagine e riprova.</p>
+    <a href="{{ url_for('main.index') }}" class="btn">Torna alla home</a>
+  </div>
 </div>
 {% endblock %}

@@ -1,40 +1,40 @@
 {% extends "base.html" %}
-
 {% block title %}Preset — BlobTrack{% endblock %}
 
 {% block content %}
-<div class="section-head">
-  <h1>I tuoi preset</h1>
-  <a href="{{ url_for('assistant.assistant') }}" class="btn">Genera con l'AI</a>
-</div>
+<div class="container">
+  <div class="section-head">
+    <h1>Preset</h1>
+    <a href="{{ url_for('assistant.assistant') }}" class="btn">Genera con l'AI</a>
+  </div>
 
-{% if presets %}
-  <div class="grid">
-    {% for p in presets %}
-      <div class="tile">
-        <div class="tile-body">
-          <div class="tile-title">{{ p.name }}</div>
-          <div class="tile-meta">
-            {% if p.source == 'ai' %}🤖 Generato dall'AI{% else %}Manuale{% endif %}
-            · {{ p.created_at.strftime('%d/%m/%Y') }}
-          </div>
-          <div style="display:flex; gap: var(--space-sm); margin-top: var(--space-sm); flex-wrap: wrap;">
-            <a href="{{ url_for('studio.studio', preset=p.id) }}" class="btn">Applica</a>
-            <form method="post" action="{{ url_for('studio.delete_preset', preset_id=p.id) }}"
-                  onsubmit="return confirm('Eliminare questo preset?');">
-              {{ delete_form.hidden_tag() }}
-              <button type="submit" class="btn btn-danger">Elimina</button>
-            </form>
+  {% if presets %}
+    <div class="grid">
+      {% for p in presets %}
+        <div class="tile">
+          <div class="tile-body">
+            <div class="tile-title">{{ p.name }}</div>
+            <div class="tile-meta">
+              {% if p.source == 'ai' %}🤖 AI{% else %}Manuale{% endif %} · {{ p.created_at.strftime('%d/%m/%Y') }}
+            </div>
+            <div class="grid-2" style="margin-top: var(--space-sm);">
+              <a href="{{ url_for('studio.studio', preset=p.id) }}" class="btn btn-sm">Applica</a>
+              <form method="post" action="{{ url_for('studio.delete_preset', preset_id=p.id) }}"
+                    onsubmit="return confirm('Eliminare questo preset?');">
+                {{ delete_form.hidden_tag() }}
+                <button type="submit" class="btn btn-danger btn-sm btn-block">Elimina</button>
+              </form>
+            </div>
           </div>
         </div>
-      </div>
-    {% endfor %}
-  </div>
-{% else %}
-  <div class="empty-state">
-    <h3>Nessun preset salvato</h3>
-    <p>Crea preset dallo Studio (“Salva come preset”) o falli generare dall'AI.</p>
-    <a href="{{ url_for('studio.studio') }}" class="btn">Vai allo Studio</a>
-  </div>
-{% endif %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h3>Nessun preset</h3>
+      <p>Crea preset dallo Studio (“Salva preset”) o falli generare dall'AI.</p>
+      <a href="{{ url_for('studio.studio') }}" class="btn">Vai allo Studio</a>
+    </div>
+  {% endif %}
+</div>
 {% endblock %}

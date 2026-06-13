@@ -1,58 +1,57 @@
 {% extends "base.html" %}
-
 {% block title %}AI Preset Generator — BlobTrack{% endblock %}
 
 {% block content %}
-<div class="section-head">
-  <h1>AI Preset Generator</h1>
-  <a href="{{ url_for('studio.presets') }}" class="btn btn-secondary">I tuoi preset</a>
-</div>
+<div class="container">
+  <div class="section-head">
+    <h1>AI Preset</h1>
+    <a href="{{ url_for('studio.presets') }}" class="btn btn-ghost">I tuoi preset</a>
+  </div>
 
-<div class="card" style="margin-bottom: var(--space-lg);">
-  <p class="form-hint" style="margin-bottom: var(--space-md);">
-    Descrivi l'estetica che vuoi (colori, stile dei contorni, filtro interno…) e
-    l'AI costruirà un preset di parametri pronto da salvare e applicare nello Studio.
-  </p>
-  <form method="post" novalidate>
-    {{ form.hidden_tag() }}
-    <div class="form-group">
-      {{ form.prompt.label }}
-      {{ form.prompt(rows=3, placeholder="es. look neon cyberpunk, contorni circolari sottili, sfondo nero, filtro acid") }}
-      {% for error in form.prompt.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
-    </div>
-    {{ form.submit(class="btn") }}
-  </form>
-</div>
-
-{% if generated %}
-  <div class="card">
-    <h3>Preset generato</h3>
-    <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); margin: var(--space-md) 0;">
-      {% for key, value in generated.items() %}
-        <div class="tile-meta">
-          <strong style="color: var(--color-text);">{{ key }}</strong><br />
-          {% if key in ('blob_color', 'wf_color', 'center_color') %}
-            <span style="display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:middle;background: {{ value }};"></span>
-          {% endif %}
-          {{ value }}
-        </div>
-      {% endfor %}
-    </div>
-    <form method="post" action="{{ url_for('assistant.save_generated') }}">
-      {{ save_form.hidden_tag() }}
-      {{ save_form.config() }}
-      <div class="form-group">
-        {{ save_form.name.label }}
-        {{ save_form.name(placeholder="Nome del preset") }}
-        {% for error in save_form.name.errors %}<div class="form-error">{{ error }}</div>{% endfor %}
+  <div class="panel" style="margin-bottom: var(--space-lg);">
+    <p class="form-hint" style="margin-bottom: var(--space-md);">
+      Descrivi l'estetica che vuoi (colori, contorni, filtro interno…) e l'AI costruirà
+      un preset di parametri pronto da salvare e applicare nello Studio.
+    </p>
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="field">
+        <label class="input-label">{{ form.prompt.label.text }}</label>
+        {{ form.prompt(rows=3, placeholder="es. neon cyberpunk, contorni circolari sottili, sfondo nero, filtro acid, glow") }}
+        {% for e in form.prompt.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
       </div>
-      {{ save_form.submit(class="btn") }}
+      {{ form.submit(class="btn") }}
     </form>
   </div>
-{% else %}
-  <div class="empty-state">
-    <h3>Nessun preset generato</h3>
-    <p>Scrivi una descrizione qui sopra e premi “Genera preset”.</p>
-  </div>
-{% endif %}
+
+  {% if generated %}
+    <div class="panel">
+      <h3 class="section-title">Preset generato</h3>
+      <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); margin: var(--space-md) 0;">
+        {% for key, value in generated.items() %}
+          <div class="tile-meta">
+            <strong style="color: var(--text);">{{ key }}</strong><br />
+            {% if 'color' in key %}<span style="display:inline-block;width:12px;height:12px;vertical-align:middle;background: {{ value }};border:1px solid #444;"></span>{% endif %}
+            {{ value }}
+          </div>
+        {% endfor %}
+      </div>
+      <form method="post" action="{{ url_for('assistant.save_generated') }}">
+        {{ save_form.hidden_tag() }}
+        {{ save_form.config() }}
+        <div class="field">
+          <label class="input-label">{{ save_form.name.label.text }}</label>
+          {{ save_form.name(placeholder="Nome del preset") }}
+          {% for e in save_form.name.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        </div>
+        {{ save_form.submit(class="btn") }}
+      </form>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h3>Nessun preset generato</h3>
+      <p>Scrivi una descrizione qui sopra e premi “Genera preset”.</p>
+    </div>
+  {% endif %}
+</div>
 {% endblock %}

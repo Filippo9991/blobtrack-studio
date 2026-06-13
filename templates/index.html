@@ -1,41 +1,31 @@
 {% extends "base.html" %}
-
-{% block title %}BlobTrack Studio — Blob detection nel browser{% endblock %}
+{% block title %}BlobTrack Studio — blob detection nel browser{% endblock %}
 
 {% block content %}
-<section class="hero">
-  <h1>Trasforma le immagini in <span class="accent">blob art</span></h1>
-  <p>
-    BlobTrack Studio rileva forme e soggetti nelle tue immagini e li ristila con
-    wireframe, contorni e filtri creativi. Carica una foto, regola i parametri,
-    salva le tue creazioni — o lascia che l'AI generi un preset per te.
-  </p>
-  <div class="hero-actions">
-    {% if current_user %}
-      <a href="{{ url_for('auth.profile') }}" class="btn">Vai al profilo</a>
-    {% else %}
-      <a href="{{ url_for('auth.register') }}" class="btn">Inizia ora</a>
-      <a href="{{ url_for('auth.login') }}" class="btn btn-secondary">Accedi</a>
-    {% endif %}
-  </div>
+<div class="container">
+  <section class="hero">
+    <h1>Immagini in <span class="accent">blob art</span></h1>
+    <p>
+      BlobTrack Studio rileva forme e soggetti nelle tue immagini con OpenCV, YOLO e
+      MediaPipe, e li ristila con contorni, wireframe, glow e filtri creativi. Carica una
+      foto, regola decine di parametri, salva le tue creazioni — o lascia che l'AI generi un preset.
+    </p>
+    <div class="hero-actions">
+      {% if current_user %}
+        <a href="{{ url_for('studio.studio') }}" class="btn">Apri lo Studio</a>
+        <a href="{{ url_for('studio.dashboard') }}" class="btn btn-ghost">Galleria</a>
+      {% else %}
+        <a href="{{ url_for('auth.register') }}" class="btn">Inizia ora</a>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-ghost">Accedi</a>
+      {% endif %}
+    </div>
+  </section>
 
   <div class="features">
-    <div class="feature">
-      <h3>Blob detection</h3>
-      <p>Rilevamento di contorni e regioni con OpenCV, server-side.</p>
-    </div>
-    <div class="feature">
-      <h3>Stili creativi</h3>
-      <p>Wireframe, bordi, filtri interni e centri configurabili.</p>
-    </div>
-    <div class="feature">
-      <h3>Le tue creazioni</h3>
-      <p>Salva i risultati nella tua galleria personale.</p>
-    </div>
-    <div class="feature">
-      <h3>AI Preset</h3>
-      <p>Descrivi un look a parole, l'AI costruisce il preset.</p>
-    </div>
+    <div class="feature"><h3>Detection</h3><p>Color/threshold, edge, YOLO (persone), MediaPipe pose/mani/volto, silhouette.</p></div>
+    <div class="feature"><h3>Styling</h3><p>Blob, wireframe, centri, etichette, filtri interni, glow — tutto configurabile.</p></div>
+    <div class="feature"><h3>Galleria</h3><p>Salva i risultati nella tua galleria personale, persistente sul database.</p></div>
+    <div class="feature"><h3>AI Preset</h3><p>Descrivi un look a parole e l'AI costruisce il preset di parametri.</p></div>
   </div>
-</section>
+</div>
 {% endblock %}

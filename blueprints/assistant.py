@@ -15,7 +15,6 @@ from extensions import db
 from forms import AIPresetForm, SaveAIPresetForm
 from models import Preset
 from services.ai_presets import AIPresetError, generate_preset
-from services.image_processing import normalize_settings
 
 assistant_bp = Blueprint("assistant", __name__)
 
@@ -53,7 +52,9 @@ def save_generated():
     save_form = SaveAIPresetForm()
     if save_form.validate_on_submit():
         try:
-            settings = normalize_settings(json.loads(save_form.config.data or "{}"))
+            settings = json.loads(save_form.config.data or "{}")
+            if not isinstance(settings, dict):
+                raise ValueError
         except ValueError:
             flash("Configurazione generata non valida.", "error")
             return redirect(url_for("assistant.assistant"))

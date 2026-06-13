@@ -7,6 +7,7 @@ from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField
 from wtforms import (
     BooleanField,
+    FloatField,
     HiddenField,
     IntegerField,
     PasswordField,
@@ -24,39 +25,18 @@ from wtforms.validators import (
     Optional,
 )
 
-from services.image_processing import (
-    BG_MODES,
-    BLOB_SHAPES,
-    BLOB_STYLES,
-    INNER_STYLES,
-    LABEL_TYPES,
-    TRACK_MODES,
-    WF_STYLES,
-    WF_TYPES,
-)
-
-
-def _choices(values):
-    """Trasforma una lista di stringhe in coppie (value, label) per i SelectField."""
-    return [(v, v.replace("_", " ").capitalize()) for v in values]
+import studio_options as opt
 
 
 # --- Autenticazione --------------------------------------------------------
 
 class RegisterForm(FlaskForm):
-    username = StringField(
-        "Username", validators=[DataRequired(), Length(min=3, max=80)]
-    )
+    username = StringField("Username", validators=[DataRequired(), Length(min=3, max=80)])
     email = StringField("Email", validators=[DataRequired(), Email()])
-    password = PasswordField(
-        "Password", validators=[DataRequired(), Length(min=6, max=128)]
-    )
+    password = PasswordField("Password", validators=[DataRequired(), Length(min=6, max=128)])
     confirm = PasswordField(
         "Conferma password",
-        validators=[
-            DataRequired(),
-            EqualTo("password", message="Le password non coincidono."),
-        ],
+        validators=[DataRequired(), EqualTo("password", message="Le password non coincidono.")],
     )
     submit = SubmitField("Registrati")
 
@@ -76,50 +56,105 @@ class DeleteForm(FlaskForm):
     submit = SubmitField("Elimina")
 
 
-# --- Studio CV -------------------------------------------------------------
+# --- Studio CV (parametri completi del motore) -----------------------------
 
-class ProcessForm(FlaskForm):
+class StudioForm(FlaskForm):
     image = FileField(
-        "Immagine",
+        "Sorgente",
         validators=[
             Optional(),
-            FileAllowed(
-                ["jpg", "jpeg", "png", "webp", "bmp"],
-                "Sono ammesse solo immagini (jpg, png, webp, bmp).",
-            ),
+            FileAllowed(["jpg", "jpeg", "png", "webp", "bmp"], "Solo immagini (jpg, png, webp, bmp)."),
         ],
     )
-    track_mode = SelectField("Canale di analisi", choices=_choices(TRACK_MODES))
+
+    # Detection
+    detection_engine = SelectField("Engine", choices=opt.choices(opt.DETECTION_ENGINES))
+    yolo_model_file = SelectField("Modello YOLO", choices=opt.choices(opt.YOLO_MODELS), default="yolov8n.pt")
+    use_high_res = BooleanField("Alta risoluzione")
+    track_mode = SelectField("Canale", choices=opt.choices(opt.TRACK_MODES))
     threshold = IntegerField("Soglia", validators=[NumberRange(0, 255)], default=127)
-    min_size = IntegerField("Dimensione minima", validators=[NumberRange(1, 100000)], default=150)
-    max_blobs = IntegerField("Numero massimo di blob", validators=[NumberRange(1, 200)], default=40)
+    threshold_mode = SelectField("Modo soglia", choices=opt.choices(opt.THRESHOLD_MODES), default="fixed")
+    color_target_hex = StringField("Colore target", default="#ff0000")
+    color_target_tolerance = IntegerField("Tolleranza", validators=[NumberRange(1, 90)], default=30)
+    morph_kernel_size = IntegerField("Morfologia", validators=[NumberRange(1, 9)], default=3)
+    edge_low = IntegerField("Edge low", validators=[NumberRange(10, 200)], default=50)
+    edge_high = IntegerField("Edge high", validators=[NumberRange(50, 300)], default=150)
+    min_blob_size = IntegerField("Dim. minima", validators=[NumberRange(1, 200000)], default=100)
+    max_blob_size = IntegerField("Dim. massima", validators=[NumberRange(1, 500000)], default=50000)
+    max_blobs = IntegerField("Max blob", validators=[NumberRange(1, 300)], default=20)
 
-    blob_shape = SelectField("Forma", choices=_choices(BLOB_SHAPES))
-    blob_style = SelectField("Stile bordo", choices=_choices(BLOB_STYLES))
-    blob_color = StringField("Colore blob", default="#00ff9d")
-    blob_thickness = IntegerField("Spessore", validators=[NumberRange(1, 8)], default=2)
-    corner_radius = IntegerField("Arrotondamento", validators=[NumberRange(0, 60)], default=0)
+    # Pre-processing
+    preprocess_enabled = BooleanField("Pre-processing")
+    preprocess_method = SelectField("Metodo", choices=opt.choices(opt.PREPROCESS_METHODS))
+    preprocess_strength = FloatField("Intensità", validators=[NumberRange(0.1, 2.0)], default=1.0)
 
-    wf_type = SelectField("Wireframe", choices=_choices(WF_TYPES))
-    wf_style = SelectField("Tratteggio wireframe", choices=_choices(WF_STYLES))
-    wf_color = StringField("Colore wireframe", default="#00ff9d")
-    wiring_density = IntegerField("Densità collegamenti", validators=[NumberRange(1, 20)], default=3)
+    # Blob
+    blob_shape = SelectField("Forma", choices=opt.choices(opt.BLOB_SHAPES))
+    blob_color = StringField("Colore blob", default="#ffffff")
+    blob_thickness = IntegerField("Spessore", validators=[NumberRange(1, 10)], default=2)
+    blob_style = SelectField("Stile bordo", choices=opt.choices(opt.BLOB_STYLES))
+    corner_radius = IntegerField("Arrotondamento", validators=[NumberRange(0, 80)], default=0)
+    blob_dot_gap = IntegerField("Gap punti", validators=[NumberRange(2, 100)], default=10)
 
-    inner_style = SelectField("Filtro interno", choices=_choices(INNER_STYLES))
-    bg_mode = SelectField("Sfondo", choices=_choices(BG_MODES))
-    label_type = SelectField("Etichetta", choices=_choices(LABEL_TYPES))
+    # Wireframe
+    wf_type = SelectField("Tipo", choices=opt.choices(opt.WF_TYPES))
+    wf_color = StringField("Colore wire", default="#ffffff")
+    wf_thickness = IntegerField("Spessore wire", validators=[NumberRange(1, 10)], default=1)
+    wf_style = SelectField("Tratteggio", choices=opt.choices(opt.WF_STYLES))
+    wf_dot_gap = IntegerField("Gap wire", validators=[NumberRange(2, 100)], default=20)
+    wiring_density = IntegerField("Densità", validators=[NumberRange(1, 20)], default=5)
+    end_cap = SelectField("Terminali", choices=opt.choices(opt.END_CAPS))
+
+    # Center
     show_center = BooleanField("Mostra centro")
+    center_color = StringField("Colore centro", default="#ffff00")
+    center_shape = SelectField("Forma centro", choices=opt.choices(opt.CENTER_SHAPES))
+    center_style = SelectField("Stile centro", choices=opt.choices(opt.CENTER_STYLES))
+    center_size_level = IntegerField("Dim. centro", validators=[NumberRange(1, 5)], default=1)
 
-    preset_name = StringField("Nome preset", validators=[Optional(), Length(max=80)])
+    # Text / labels
+    label_type = SelectField("Etichetta", choices=opt.choices(opt.LABEL_TYPES))
+    text_color = StringField("Colore testo", default="#ffffff")
+    custom_text = StringField("Testo", default="REC", validators=[Optional(), Length(max=40)])
+    font_weight = SelectField("Peso font", choices=opt.choices(opt.FONT_WEIGHTS))
+    label_pos = SelectField("Posizione", choices=opt.choices(opt.LABEL_POSITIONS))
+    text_size = FloatField("Dim. testo", validators=[NumberRange(0.3, 2.0)], default=0.6)
+    text_outline = BooleanField("Contorno testo")
+    text_outline_color = StringField("Colore contorno", default="#000000")
 
-    # Più azioni dallo stesso form (lette via request.form['action'])
+    # Inner / scene
+    inner_style = SelectField("Filtro interno", choices=opt.choices(opt.INNER_STYLES))
+    bg_mode = SelectField("Sfondo", choices=opt.choices(opt.BG_MODES))
+    opacity = FloatField("Opacità", validators=[NumberRange(0.1, 1.0)], default=1.0)
+
+    # Glow
+    glow_enabled = BooleanField("Glow")
+    glow_intensity = FloatField("Intensità glow", validators=[NumberRange(0.0, 2.0)], default=1.0)
+    glow_radius = IntegerField("Raggio glow", validators=[NumberRange(5, 51)], default=21)
+
+    # MediaPipe
+    mp_pose_enabled = BooleanField("Pose")
+    mp_hands_enabled = BooleanField("Mani")
+    mp_face_enabled = BooleanField("Volto")
+    mp_confidence = FloatField("Confidenza", validators=[NumberRange(0.1, 1.0)], default=0.5)
+    mp_num_poses = IntegerField("N. pose", validators=[NumberRange(1, 6)], default=4)
+    mp_pose_num_points = IntegerField("Punti pose", validators=[NumberRange(1, 33)], default=6)
+    mp_hands_num_points = IntegerField("Punti mani", validators=[NumberRange(1, 21)], default=5)
+    mp_num_faces = IntegerField("N. volti", validators=[NumberRange(1, 4)], default=2)
+    mp_face_num_points = IntegerField("Punti volto", validators=[NumberRange(1, 15)], default=7)
+    mp_blob_size = FloatField("Dim. blob MP", validators=[NumberRange(0.5, 3.0)], default=1.0)
+    mp_merge_distance = IntegerField("Fusione (px)", validators=[NumberRange(0, 200)], default=0)
+
+    # Salvataggio
+    preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
     submit = SubmitField("Elabora")
 
 
+# --- AI Preset Generator ---------------------------------------------------
+
 class AIPresetForm(FlaskForm):
     prompt = TextAreaField(
-        "Descrivi il look che vuoi",
-        validators=[DataRequired(), Length(min=3, max=400)],
+        "Descrivi il look che vuoi", validators=[DataRequired(), Length(min=3, max=400)]
     )
     submit = SubmitField("Genera preset")
 

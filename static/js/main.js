@@ -2,6 +2,8 @@
 
 document.addEventListener("DOMContentLoaded", function () {
   setupCookieBanner();
+  setupRangeOutputs();
+  setupFileName();
 });
 
 // Banner consenso cookie (GDPR): invio via fetch + nascondi senza ricaricare.
@@ -14,21 +16,32 @@ function setupCookieBanner() {
   form.addEventListener("submit", function (event) {
     event.preventDefault();
     var action = (document.activeElement && document.activeElement.value) || "accept";
-
     var body = new URLSearchParams();
     body.append("action", action);
+    fetch(form.action, { method: "POST", headers: { "X-Requested-With": "fetch" }, body: body })
+      .then(function () { banner.style.display = "none"; })
+      .catch(function () { form.submit(); });
+  });
+}
 
-    fetch(form.action, {
-      method: "POST",
-      headers: { "X-Requested-With": "fetch" },
-      body: body,
-    })
-      .then(function () {
-        banner.style.display = "none";
-      })
-      .catch(function () {
-        // Se il fetch fallisce, lasciamo che il form venga inviato normalmente
-        form.submit();
-      });
+// Mostra il valore corrente accanto a ogni slider.
+function setupRangeOutputs() {
+  document.querySelectorAll(".js-range").forEach(function (range) {
+    var field = range.closest(".field");
+    var out = field ? field.querySelector(".val") : null;
+    if (!out) return;
+    var sync = function () { out.textContent = range.value; };
+    range.addEventListener("input", sync);
+    sync();
+  });
+}
+
+// Mostra il nome del file selezionato sul pulsante di upload.
+function setupFileName() {
+  var input = document.querySelector('#studio-form input[type="file"]');
+  var label = document.getElementById("fname");
+  if (!input || !label) return;
+  input.addEventListener("change", function () {
+    label.textContent = input.files && input.files.length ? input.files[0].name : "Carica immagine";
   });
 }
