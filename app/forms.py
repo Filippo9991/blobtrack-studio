@@ -153,6 +153,17 @@ class StudioForm(_ConfigFieldsForm):
     submit = SubmitField("Elabora")
 
 
+class LiveForm(_ConfigFieldsForm):
+    """Live cam: solo parametri di stile (i frame arrivano dalla webcam del browser).
+
+    Niente upload e niente parametri temporali: il motore in modalità immagine
+    azzera lo stato di tracking ad ogni frame, quindi scie/persistenza non si
+    accumulerebbero. `preset_name` serve per salvare preset o snapshot.
+    """
+    preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
+    submit = SubmitField("Salva")
+
+
 class VideoForm(_ConfigFieldsForm):
     video = FileField(
         "Sorgente video",

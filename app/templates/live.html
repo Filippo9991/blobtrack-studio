@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Live — BlobTrack{% endblock %}
+
+{% block content %}
+<div class="studio">
+  <aside class="studio-sidebar">
+    <div class="sb-header">BlobTrack<span class="tag">LIVE</span></div>
+
+    <form method="post" novalidate id="live-form">
+      {{ form.hidden_tag() }}
+      {# Riempito dal client al volo: il frame grezzo da rielaborare/salvare. #}
+      <input type="hidden" name="snapshot_raw" id="snapshot_raw" />
+
+      <div class="sb-section">
+        <div class="grid-2">
+          <button type="button" class="btn btn-block" id="cam-start">Avvia camera</button>
+          <button type="button" class="btn btn-ghost btn-block" id="cam-stop" disabled>Stop</button>
+        </div>
+        <p class="form-hint" style="margin-top:8px;">
+          La webcam è gestita dal browser; i frame vengono elaborati sul server in
+          tempo (quasi) reale. Concedi il permesso alla fotocamera quando richiesto.
+        </p>
+      </div>
+
+      {% include "_config_sections.html" %}
+
+      <div class="sb-section">
+        <h3 class="section-title">Salva</h3>
+        <div class="field">
+          <label class="input-label">{{ form.preset_name.label.text }}</label>
+          {{ form.preset_name(placeholder="Nome preset o snapshot") }}
+        </div>
+        <button type="submit" name="action" value="save_snapshot" id="snapshot-btn"
+                class="btn btn-block" style="margin-bottom:8px;" disabled>Salva snapshot</button>
+        <button type="submit" name="action" value="save_preset" class="btn btn-ghost btn-block">Salva preset</button>
+      </div>
+    </form>
+  </aside>
+
+  <section class="studio-preview">
+    <div class="live-stage">
+      <video id="cam-video" playsinline muted></video>
+      <img id="live-output" alt="Output live" />
+      <div class="placeholder" id="live-placeholder">Avvia la camera · regola i parametri · guarda l'output</div>
+      <div class="live-hud" id="live-hud" hidden><span id="live-fps">0</span> FPS</div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/live.js') }}"></script>
+{% endblock %}
