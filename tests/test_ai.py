@@ -4,9 +4,9 @@ import json
 import requests
 from conftest import register_and_login
 
-import blueprints.assistant as assistant_bp
-import services.ai_presets as ai
-from models import Preset
+import app.blueprints.assistant as assistant_bp
+import app.services.ai_presets as ai
+from app.models import Preset
 
 
 def test_consent_banner_flow(client):

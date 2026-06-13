@@ -10,11 +10,11 @@ from flask import (
     url_for,
 )
 
-from decorators import login_required
-from extensions import db
-from forms import AIPresetForm, SaveAIPresetForm
-from models import Preset
-from services.ai_presets import AIPresetError, generate_preset
+from app.decorators import login_required
+from app.extensions import db
+from app.forms import AIPresetForm, SaveAIPresetForm
+from app.models import Preset
+from app.services.ai_presets import AIPresetError, generate_preset
 
 assistant_bp = Blueprint("assistant", __name__)
 

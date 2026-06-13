@@ -1,7 +1,7 @@
-"""BlobTrack Studio — application factory.
+"""BlobTrack Studio — application factory (package `app`).
 
 Avvio locale:   flask --app app run --debug
-Avvio produzione (Render):  gunicorn app:app
+Avvio produzione (Render):  gunicorn wsgi:app
 """
 import logging
 import os
@@ -9,7 +9,7 @@ import os
 from flask import Flask, render_template, session
 
 from config import config_by_name
-from extensions import db
+from app.extensions import db
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,10 +26,10 @@ def create_app(config_name=None):
     db.init_app(app)
 
     # --- Blueprints ---
-    from blueprints.main import main_bp
-    from blueprints.auth import auth_bp
-    from blueprints.studio import studio_bp
-    from blueprints.assistant import assistant_bp
+    from app.blueprints.main import main_bp
+    from app.blueprints.auth import auth_bp
+    from app.blueprints.studio import studio_bp
+    from app.blueprints.assistant import assistant_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -39,7 +39,7 @@ def create_app(config_name=None):
     # --- variabili globali disponibili in tutti i template ---
     @app.context_processor
     def inject_globals():
-        from models import User
+        from app.models import User
 
         uid = session.get("user_id")
         user = db.session.get(User, uid) if uid else None
@@ -70,6 +70,3 @@ def create_app(config_name=None):
         db.create_all()
 
     return app
-
-
-app = create_app()

@@ -9,10 +9,10 @@ from flask import (
     url_for,
 )
 
-from decorators import login_required
-from extensions import db
-from forms import DeleteAccountForm, LoginForm, RegisterForm
-from models import User
+from app.decorators import login_required
+from app.extensions import db
+from app.forms import DeleteAccountForm, LoginForm, RegisterForm
+from app.models import User
 
 auth_bp = Blueprint("auth", __name__)
 

@@ -3,7 +3,7 @@ import io
 
 from conftest import register_and_login
 
-from models import Creation, Preset
+from app.models import Creation, Preset
 
 # Set completo di campi della StudioForm (valori validi, detection color = veloce)
 BASE = dict(

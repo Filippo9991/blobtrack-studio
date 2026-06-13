@@ -1,7 +1,7 @@
 """Test del wrapper di elaborazione immagine (services.frame_engine)."""
 import pytest
 
-from services.frame_engine import render_image
+from app.services.frame_engine import render_image
 
 
 def test_render_color_returns_png(sample_png):

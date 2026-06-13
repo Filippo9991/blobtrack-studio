@@ -1,7 +1,7 @@
 """Test di autenticazione e protezione delle route."""
 from conftest import register_and_login
 
-from models import User
+from app.models import User
 
 
 def test_home_loads(client):

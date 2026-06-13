@@ -9,8 +9,8 @@ from flask import (
     url_for,
 )
 
-from extensions import db
-from models import User
+from app.extensions import db
+from app.models import User
 
 main_bp = Blueprint("main", __name__)
 

@@ -14,11 +14,11 @@ from flask import (
     url_for,
 )
 
-from decorators import login_required
-from extensions import db
-from forms import DeleteForm, StudioForm
-from models import Creation, Preset
-from services.frame_engine import render_image
+from app.decorators import login_required
+from app.extensions import db
+from app.forms import DeleteForm, StudioForm
+from app.models import Creation, Preset
+from app.services.frame_engine import render_image
 
 studio_bp = Blueprint("studio", __name__)
 
