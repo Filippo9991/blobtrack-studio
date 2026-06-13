@@ -1,42 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Studio — BlobTrack{% endblock %}
 
-{# --- macro di rendering dei controlli (stile acid) --- #}
-{% macro sel(field) %}
-  <div class="field">
-    <label class="input-label">{{ field.label.text }}</label>
-    {{ field() }}
-    {% for e in field.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
-  </div>
-{% endmacro %}
-
-{% macro clr(field) %}
-  <div class="field">
-    <label class="input-label">{{ field.label.text }}</label>
-    {{ field(type="color") }}
-  </div>
-{% endmacro %}
-
-{% macro num(field) %}
-  <div class="field">
-    <label class="input-label">{{ field.label.text }}</label>
-    {{ field(type="number") }}
-    {% for e in field.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
-  </div>
-{% endmacro %}
-
-{% macro rng(field, mn, mx, step=1) %}
-  <div class="field">
-    <div class="label-row"><span class="input-label">{{ field.label.text }}</span><span class="val">{{ field.data }}</span></div>
-    {{ field(type="range", min=mn, max=mx, step=step, class="js-range") }}
-    {% for e in field.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
-  </div>
-{% endmacro %}
-
-{% macro chk(field) %}
-  <div class="check-row">{{ field() }}<label for="{{ field.id }}">{{ field.label.text }}</label></div>
-{% endmacro %}
-
 {% block content %}
 <div class="studio">
   <aside class="studio-sidebar">
@@ -45,115 +9,14 @@
     <form method="post" enctype="multipart/form-data" novalidate id="studio-form">
       {{ form.hidden_tag() }}
 
-      {# Source #}
       <div class="sb-section">
-        <label class="upload-btn" for="{{ form.image.id }}">
-          <span id="fname">Carica immagine</span>
-        </label>
+        <label class="upload-btn" for="{{ form.image.id }}"><span class="fname">Carica immagine</span></label>
         <div style="position:absolute; left:-9999px;">{{ form.image() }}</div>
         {% for e in form.image.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
       </div>
 
-      {# Detection #}
-      <div class="sb-section">
-        <h3 class="section-title">Detection</h3>
-        {{ sel(form.detection_engine) }}
-        {{ sel(form.yolo_model_file) }}
-        {{ chk(form.use_high_res) }}
-        {{ sel(form.track_mode) }}
-        {{ clr(form.color_target_hex) }}
-        {{ rng(form.color_target_tolerance, 1, 90) }}
-        {{ rng(form.threshold, 0, 255) }}
-        {{ sel(form.threshold_mode) }}
-        {{ rng(form.morph_kernel_size, 1, 9, 2) }}
-        <div class="grid-2">{{ num(form.min_blob_size) }}{{ num(form.max_blob_size) }}</div>
-        {{ rng(form.max_blobs, 1, 300) }}
-        <div class="grid-2">{{ num(form.edge_low) }}{{ num(form.edge_high) }}</div>
-      </div>
+      {% include "_config_sections.html" %}
 
-      {# Pre-processing #}
-      <div class="sb-section">
-        <h3 class="section-title">Pre-processing</h3>
-        {{ chk(form.preprocess_enabled) }}
-        {{ sel(form.preprocess_method) }}
-        {{ rng(form.preprocess_strength, 0.1, 2.0, 0.1) }}
-      </div>
-
-      {# Blob #}
-      <div class="sb-section">
-        <h3 class="section-title">Blob</h3>
-        {{ sel(form.blob_shape) }}
-        {{ sel(form.blob_style) }}
-        {{ clr(form.blob_color) }}
-        {{ rng(form.blob_thickness, 1, 10) }}
-        {{ rng(form.corner_radius, 0, 80) }}
-        {{ rng(form.blob_dot_gap, 2, 100) }}
-      </div>
-
-      {# Wireframe #}
-      <div class="sb-section">
-        <h3 class="section-title">Wireframe</h3>
-        {{ sel(form.wf_type) }}
-        {{ sel(form.wf_style) }}
-        {{ clr(form.wf_color) }}
-        {{ rng(form.wf_thickness, 1, 10) }}
-        {{ rng(form.wiring_density, 1, 20) }}
-        {{ rng(form.wf_dot_gap, 2, 100) }}
-        {{ sel(form.end_cap) }}
-      </div>
-
-      {# Center #}
-      <div class="sb-section">
-        <h3 class="section-title">Center</h3>
-        {{ chk(form.show_center) }}
-        {{ clr(form.center_color) }}
-        <div class="grid-2">{{ sel(form.center_shape) }}{{ sel(form.center_style) }}</div>
-        {{ rng(form.center_size_level, 1, 5) }}
-      </div>
-
-      {# Text #}
-      <div class="sb-section">
-        <h3 class="section-title">Text</h3>
-        {{ sel(form.label_type) }}
-        <div class="field">
-          <label class="input-label">{{ form.custom_text.label.text }}</label>
-          {{ form.custom_text() }}
-        </div>
-        {{ clr(form.text_color) }}
-        <div class="grid-2">{{ sel(form.font_weight) }}{{ sel(form.label_pos) }}</div>
-        {{ rng(form.text_size, 0.3, 2.0, 0.1) }}
-        {{ chk(form.text_outline) }}
-        {{ clr(form.text_outline_color) }}
-      </div>
-
-      {# Inner / Scene #}
-      <div class="sb-section">
-        <h3 class="section-title">Inner &amp; Scene</h3>
-        {{ sel(form.inner_style) }}
-        {{ sel(form.bg_mode) }}
-        {{ rng(form.opacity, 0.1, 1.0, 0.05) }}
-      </div>
-
-      {# Glow #}
-      <div class="sb-section">
-        <h3 class="section-title">Glow</h3>
-        {{ chk(form.glow_enabled) }}
-        {{ rng(form.glow_intensity, 0.0, 2.0, 0.1) }}
-        {{ rng(form.glow_radius, 5, 51, 2) }}
-      </div>
-
-      {# MediaPipe #}
-      <div class="sb-section">
-        <h3 class="section-title">MediaPipe</h3>
-        <div class="grid-3">{{ chk(form.mp_pose_enabled) }}{{ chk(form.mp_hands_enabled) }}{{ chk(form.mp_face_enabled) }}</div>
-        {{ rng(form.mp_confidence, 0.1, 1.0, 0.05) }}
-        <div class="grid-2">{{ rng(form.mp_num_poses, 1, 6) }}{{ rng(form.mp_pose_num_points, 1, 33) }}</div>
-        <div class="grid-2">{{ rng(form.mp_hands_num_points, 1, 21) }}{{ rng(form.mp_num_faces, 1, 4) }}</div>
-        <div class="grid-2">{{ rng(form.mp_face_num_points, 1, 15) }}{{ rng(form.mp_blob_size, 0.5, 3.0, 0.1) }}</div>
-        {{ rng(form.mp_merge_distance, 0, 200) }}
-      </div>
-
-      {# Save #}
       <div class="sb-section">
         <h3 class="section-title">Salva</h3>
         <div class="field">
@@ -173,9 +36,7 @@
     {% if preview %}
       <img src="{{ preview }}" alt="Anteprima elaborata" />
     {% else %}
-      <div class="placeholder">
-        Carica un'immagine · regola i parametri · premi Anteprima
-      </div>
+      <div class="placeholder">Carica un'immagine · regola i parametri · premi Anteprima</div>
     {% endif %}
   </section>
 </div>

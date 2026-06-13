@@ -1,0 +1,36 @@
+{# Macro di rendering dei controlli (stile acid), condivise da Studio e Video. #}
+
+{% macro sel(field) %}
+  <div class="field">
+    <label class="input-label">{{ field.label.text }}</label>
+    {{ field() }}
+    {% for e in field.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+  </div>
+{% endmacro %}
+
+{% macro clr(field) %}
+  <div class="field">
+    <label class="input-label">{{ field.label.text }}</label>
+    {{ field(type="color") }}
+  </div>
+{% endmacro %}
+
+{% macro num(field) %}
+  <div class="field">
+    <label class="input-label">{{ field.label.text }}</label>
+    {{ field(type="number") }}
+    {% for e in field.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+  </div>
+{% endmacro %}
+
+{% macro rng(field, mn, mx, step=1) %}
+  <div class="field">
+    <div class="label-row"><span class="input-label">{{ field.label.text }}</span><span class="val">{{ field.data }}</span></div>
+    {{ field(type="range", min=mn, max=mx, step=step, class="js-range") }}
+    {% for e in field.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+  </div>
+{% endmacro %}
+
+{% macro chk(field) %}
+  <div class="check-row">{{ field() }}<label for="{{ field.id }}">{{ field.label.text }}</label></div>
+{% endmacro %}

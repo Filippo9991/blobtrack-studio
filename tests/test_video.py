@@ -1,0 +1,76 @@
+"""Test dell'elaborazione VIDEO (upload → render → file servibile)."""
+import io
+import os
+import tempfile
+
+import cv2
+import numpy as np
+from conftest import register_and_login
+
+# Config completo VideoForm (config base + campi temporali), detection color = veloce
+VBASE = dict(
+    detection_engine="color", yolo_model_file="yolov8n.pt", track_mode="luminance",
+    threshold="120", threshold_mode="fixed", color_target_hex="#ff0000",
+    color_target_tolerance="30", morph_kernel_size="3", edge_low="50", edge_high="150",
+    min_blob_size="150", max_blob_size="50000", max_blobs="20",
+    preprocess_method="CrowdBoost", preprocess_strength="1.0",
+    blob_shape="circular", blob_color="#00ff9d", blob_thickness="2", blob_style="dotted",
+    corner_radius="0", blob_dot_gap="10",
+    wf_type="linear", wf_color="#00ff9d", wf_thickness="1", wf_style="solid",
+    wf_dot_gap="20", wiring_density="5", end_cap="none",
+    center_color="#ffff00", center_shape="circle", center_style="filled", center_size_level="1",
+    label_type="none", text_color="#ffffff", custom_text="REC", font_weight="regular",
+    label_pos="bottom", text_size="0.6", text_outline_color="#000000",
+    inner_style="acid", bg_mode="black", opacity="1.0",
+    glow_intensity="1.0", glow_radius="21",
+    mp_confidence="0.5", mp_num_poses="4", mp_pose_num_points="6", mp_hands_num_points="5",
+    mp_num_faces="2", mp_face_num_points="7", mp_blob_size="1.0", mp_merge_distance="0",
+    # campi video
+    frame_skip="1", smoothing="5", persistence="30", tracker_match_radius="150",
+    trail_length="10", trail_opacity="0.6", trail_style="fade",
+)
+
+
+def _tiny_mp4_bytes():
+    tmp = tempfile.mkdtemp()
+    path = os.path.join(tmp, "src.mp4")
+    vw = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"), 12, (320, 240))
+    for i in range(18):
+        f = np.full((240, 320, 3), 18, np.uint8)
+        cv2.circle(f, (40 + i * 12, 120), 26, (255, 255, 255), -1)
+        vw.write(f)
+    vw.release()
+    with open(path, "rb") as fh:
+        return fh.read()
+
+
+def test_video_get_page(client):
+    register_and_login(client, "vid")
+    r = client.get("/video")
+    assert r.status_code == 200 and b"Elabora video" in r.data
+
+
+def test_video_processing_produces_playable_output(client, app):
+    register_and_login(client, "vid2")
+    data = dict(VBASE)
+    data["trails_enabled"] = "y"
+    data["video"] = (io.BytesIO(_tiny_mp4_bytes()), "clip.mp4")
+
+    r = client.post("/video", data=data, content_type="multipart/form-data")
+    assert r.status_code == 200
+    assert b"Video elaborato" in r.data
+    assert b"uploads/" in r.data  # link al video risultante
+
+    # il file output esiste in static/uploads ed è leggibile come video
+    uploads = os.path.join(app.static_folder, "uploads")
+    mp4s = [f for f in os.listdir(uploads) if f.endswith(".mp4") and not f.startswith("_in_")]
+    assert mp4s, "nessun video di output prodotto"
+    cap = cv2.VideoCapture(os.path.join(uploads, sorted(mp4s)[-1]))
+    assert int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) > 0
+
+
+def test_video_requires_file(client):
+    register_and_login(client, "vid3")
+    r = client.post("/video", data=dict(VBASE), content_type="multipart/form-data")
+    assert r.status_code == 200
+    assert b"Carica un video" in r.data

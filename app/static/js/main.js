@@ -36,12 +36,13 @@ function setupRangeOutputs() {
   });
 }
 
-// Mostra il nome del file selezionato sul pulsante di upload.
+// Mostra il nome del file selezionato sul pulsante di upload (Studio e Video).
 function setupFileName() {
   var input = document.querySelector('#studio-form input[type="file"]');
-  var label = document.getElementById("fname");
+  var label = document.querySelector(".fname");
   if (!input || !label) return;
+  var fallback = label.textContent;
   input.addEventListener("change", function () {
-    label.textContent = input.files && input.files.length ? input.files[0].name : "Carica immagine";
+    label.textContent = input.files && input.files.length ? input.files[0].name : fallback;
   });
 }

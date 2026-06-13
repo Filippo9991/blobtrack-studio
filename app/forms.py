@@ -2,9 +2,12 @@
 
 Ogni form eredita da FlaskForm e include automaticamente la protezione CSRF
 (tramite {{ form.hidden_tag() }} nei template).
+
+I parametri di stile del motore vivono in `_ConfigFieldsForm`, condivisa da Studio
+(immagine) e Video: così i preset sono interscambiabili fra i due.
 """
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileAllowed, FileField
+from flask_wtf.file import FileAllowed, FileField, FileRequired
 from wtforms import (
     BooleanField,
     FloatField,
@@ -56,17 +59,9 @@ class DeleteForm(FlaskForm):
     submit = SubmitField("Elimina")
 
 
-# --- Studio CV (parametri completi del motore) -----------------------------
+# --- Parametri di stile del motore (condivisi Studio + Video) --------------
 
-class StudioForm(FlaskForm):
-    image = FileField(
-        "Sorgente",
-        validators=[
-            Optional(),
-            FileAllowed(["jpg", "jpeg", "png", "webp", "bmp"], "Solo immagini (jpg, png, webp, bmp)."),
-        ],
-    )
-
+class _ConfigFieldsForm(FlaskForm):
     # Detection
     detection_engine = SelectField("Engine", choices=opt.choices(opt.DETECTION_ENGINES))
     yolo_model_file = SelectField("Modello YOLO", choices=opt.choices(opt.YOLO_MODELS), default="yolov8n.pt")
@@ -145,9 +140,39 @@ class StudioForm(FlaskForm):
     mp_blob_size = FloatField("Dim. blob MP", validators=[NumberRange(0.5, 3.0)], default=1.0)
     mp_merge_distance = IntegerField("Fusione (px)", validators=[NumberRange(0, 200)], default=0)
 
-    # Salvataggio
+
+class StudioForm(_ConfigFieldsForm):
+    image = FileField(
+        "Sorgente",
+        validators=[
+            Optional(),
+            FileAllowed(["jpg", "jpeg", "png", "webp", "bmp"], "Solo immagini (jpg, png, webp, bmp)."),
+        ],
+    )
     preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
     submit = SubmitField("Elabora")
+
+
+class VideoForm(_ConfigFieldsForm):
+    video = FileField(
+        "Sorgente video",
+        validators=[
+            FileRequired("Carica un video."),
+            FileAllowed(["mp4", "mov", "avi", "webm", "mkv"], "Solo video (mp4, mov, avi, webm, mkv)."),
+        ],
+    )
+    # Parametri temporali (hanno senso solo sul video)
+    frame_skip = IntegerField("Frame skip", validators=[NumberRange(1, 10)], default=1)
+    smoothing = IntegerField("Smoothing", validators=[NumberRange(0, 60)], default=5)
+    persistence = IntegerField("Persistenza", validators=[NumberRange(0, 100)], default=30)
+    persistence_fade = BooleanField("Fade persistenza")
+    tracker_match_radius = IntegerField("Raggio tracker", validators=[NumberRange(50, 500)], default=150)
+    trails_enabled = BooleanField("Scie (trails)")
+    trail_length = IntegerField("Lunghezza scia", validators=[NumberRange(5, 60)], default=20)
+    trail_opacity = FloatField("Opacità scia", validators=[NumberRange(0.1, 1.0)], default=0.6)
+    trail_style = SelectField("Stile scia", choices=opt.choices(opt.TRAIL_STYLES))
+    preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
+    submit = SubmitField("Elabora video")
 
 
 # --- AI Preset Generator ---------------------------------------------------

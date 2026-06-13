@@ -26,8 +26,8 @@ class Config:
     GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
     GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 
-    # Limite dimensione upload: 8 MB
-    MAX_CONTENT_LENGTH = 8 * 1024 * 1024
+    # Limite dimensione upload: 64 MB (immagini piccole, video brevi)
+    MAX_CONTENT_LENGTH = 64 * 1024 * 1024
 
 
 class DevelopmentConfig(Config):

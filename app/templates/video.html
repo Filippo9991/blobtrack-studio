@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Video — BlobTrack{% endblock %}
+{% import "_controls.html" as c %}
+
+{% block content %}
+<div class="studio">
+  <aside class="studio-sidebar">
+    <div class="sb-header">BlobTrack<span class="tag">VIDEO</span></div>
+
+    <form method="post" enctype="multipart/form-data" novalidate id="studio-form">
+      {{ form.hidden_tag() }}
+
+      <div class="sb-section">
+        <label class="upload-btn" for="{{ form.video.id }}"><span class="fname">Carica video</span></label>
+        <div style="position:absolute; left:-9999px;">{{ form.video() }}</div>
+        {% for e in form.video.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        <p class="form-hint" style="margin-top:6px;">Clip brevi: l'elaborazione è frame-by-frame e può richiedere tempo.</p>
+      </div>
+
+      <div class="sb-section">
+        <h3 class="section-title">Motion</h3>
+        {{ c.rng(form.frame_skip, 1, 10) }}
+        {{ c.rng(form.smoothing, 0, 60) }}
+        {{ c.rng(form.persistence, 0, 100) }}
+        {{ c.chk(form.persistence_fade) }}
+        {{ c.rng(form.tracker_match_radius, 50, 500) }}
+        {{ c.chk(form.trails_enabled) }}
+        {{ c.rng(form.trail_length, 5, 60) }}
+        {{ c.rng(form.trail_opacity, 0.1, 1.0, 0.05) }}
+        {{ c.sel(form.trail_style) }}
+      </div>
+
+      {% include "_config_sections.html" %}
+
+      <div class="sb-section">
+        <button type="submit" class="btn btn-block">Elabora video</button>
+      </div>
+    </form>
+  </aside>
+
+  <section class="studio-preview">
+    {% if result %}
+      <div style="text-align:center;">
+        <video controls autoplay loop style="max-width:100%; max-height:70vh; border:1px solid var(--line);">
+          <source src="{{ url_for('static', filename='uploads/' + result) }}" type="video/mp4" />
+        </video>
+        <div style="margin-top: var(--space-md);">
+          <a href="{{ url_for('static', filename='uploads/' + result) }}" download class="btn">Scarica video</a>
+        </div>
+      </div>
+    {% else %}
+      <div class="placeholder">Carica un video · regola i parametri · premi Elabora video</div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
