@@ -28,6 +28,8 @@ VBASE = dict(
     # campi video
     frame_skip="1", smoothing="5", persistence="30", tracker_match_radius="150",
     trail_length="10", trail_opacity="0.6", trail_style="fade",
+    # campi audio (default; la traccia è opzionale)
+    audio_band="bass", audio_sensitivity="1.0", audio_offset="0.0", audio_mod_intensity="1.0",
 )
 
 
@@ -74,3 +76,41 @@ def test_video_requires_file(client):
     r = client.post("/video", data=dict(VBASE), content_type="multipart/form-data")
     assert r.status_code == 200
     assert b"Carica un video" in r.data
+
+
+def _tiny_wav_bytes():
+    """Mezzo secondo di sinusoide pulsata (genera onset rilevabili)."""
+    import math
+    import struct
+    import wave
+
+    buf = io.BytesIO()
+    w = wave.open(buf, "wb")
+    w.setnchannels(1)
+    w.setsampwidth(2)
+    w.setframerate(22050)
+    for i in range(11025):
+        env = 1.0 if (i // 2205) % 2 == 0 else 0.05  # pulsa ogni 0.1s
+        w.writeframes(struct.pack("<h", int(8000 * env * math.sin(2 * math.pi * 110 * i / 22050))))
+    w.close()
+    return buf.getvalue()
+
+
+def test_video_audio_reactivity_produces_output(client, app):
+    """Con una traccia audio caricata l'elaborazione va a buon fine (beat + mux)."""
+    register_and_login(client, "vidaudio")
+    data = dict(VBASE)
+    data["audio_modulate_size"] = "y"
+    data["video"] = (io.BytesIO(_tiny_mp4_bytes()), "clip.mp4")
+    data["audio"] = (io.BytesIO(_tiny_wav_bytes()), "track.wav")
+
+    r = client.post("/video", data=data, content_type="multipart/form-data")
+    assert r.status_code == 200
+    assert b"Video elaborato" in r.data
+
+    uploads = os.path.join(app.static_folder, "uploads")
+    # niente file temporanei audio/input lasciati indietro
+    assert not [f for f in os.listdir(uploads) if f.startswith(("_in_", "_aud_"))]
+    mp4s = [f for f in os.listdir(uploads) if f.endswith(".mp4") and not f.startswith("_")]
+    cap = cv2.VideoCapture(os.path.join(uploads, sorted(mp4s)[-1]))
+    assert int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) > 0

@@ -26,7 +26,7 @@ studio_bp = Blueprint("studio", __name__)
 # Campi dei form (Studio/Video) che NON fanno parte del config del motore.
 # I campi-config sono quindi "tutti gli altri": il form è l'unica fonte di verità
 # (aggiungere un parametro al form lo include automaticamente nel config).
-_NON_CONFIG_FIELDS = {"csrf_token", "image", "video", "preset_name", "submit"}
+_NON_CONFIG_FIELDS = {"csrf_token", "image", "video", "audio", "preset_name", "submit"}
 
 
 def _form_to_settings(form):
@@ -182,7 +182,7 @@ def video():
 
     settings = _form_to_settings(form)
     try:
-        result = process_video(form.video.data, settings)
+        result = process_video(form.video.data, settings, form.audio.data)
     except Exception as exc:  # codec/IO/engine: non esporre lo stacktrace
         current_app.logger.exception("Errore di elaborazione video")
         flash(f"Elaborazione video fallita: {exc}", "error")

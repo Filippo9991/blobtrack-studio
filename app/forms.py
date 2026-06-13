@@ -182,6 +182,22 @@ class VideoForm(_ConfigFieldsForm):
     trail_length = IntegerField("Lunghezza scia", validators=[NumberRange(5, 60)], default=20)
     trail_opacity = FloatField("Opacità scia", validators=[NumberRange(0.1, 1.0)], default=0.6)
     trail_style = SelectField("Stile scia", choices=opt.choices(opt.TRAIL_STYLES))
+    # Audio reactivity — la reattività si attiva caricando una traccia (audio_enabled
+    # e audio_path li imposta il service in base al file). Questi sono i parametri.
+    audio = FileField(
+        "Traccia audio",
+        validators=[
+            Optional(),
+            FileAllowed(["mp3", "wav", "m4a", "aac", "ogg", "flac"], "Solo audio (mp3, wav, m4a, aac, ogg, flac)."),
+        ],
+    )
+    audio_band = SelectField("Banda", choices=opt.choices(opt.AUDIO_BANDS), default="bass")
+    audio_sensitivity = FloatField("Sensibilità beat", validators=[NumberRange(0.1, 3.0)], default=1.0)
+    audio_offset = FloatField("Offset (s)", validators=[NumberRange(0.0, 60.0)], default=0.0)
+    audio_modulate_size = BooleanField("Modula dimensione")
+    audio_modulate_thickness = BooleanField("Modula spessore")
+    audio_modulate_glow = BooleanField("Modula glow")
+    audio_mod_intensity = FloatField("Intensità modulazione", validators=[NumberRange(0.0, 2.0)], default=1.0)
     preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
     submit = SubmitField("Elabora video")
 

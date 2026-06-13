@@ -12,9 +12,9 @@ instance/
 # Secrets
 .env
 
-# Uploads (runtime, ephemeral)
-static/uploads/*
-!static/uploads/.gitkeep
+# Uploads (runtime, ephemeral) — cartella sotto app/ dopo il refactor
+app/static/uploads/*
+!app/static/uploads/.gitkeep
 
 # Archived legacy project (not deployed, kept local only)
 legacy/

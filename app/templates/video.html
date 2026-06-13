@@ -25,9 +25,26 @@
         {{ c.chk(form.persistence_fade) }}
         {{ c.rng(form.tracker_match_radius, 50, 500) }}
         {{ c.chk(form.trails_enabled) }}
-        {{ c.rng(form.trail_length, 5, 60) }}
-        {{ c.rng(form.trail_opacity, 0.1, 1.0, 0.05) }}
-        {{ c.sel(form.trail_style) }}
+        <div data-show-when-checked="trails_enabled">
+          {{ c.rng(form.trail_length, 5, 60) }}
+          {{ c.rng(form.trail_opacity, 0.1, 1.0, 0.05) }}
+          {{ c.sel(form.trail_style) }}
+        </div>
+      </div>
+
+      <div class="sb-section">
+        <h3 class="section-title">Audio</h3>
+        <label class="upload-btn" for="{{ form.audio.id }}"><span class="fname">Carica traccia audio</span></label>
+        <div style="position:absolute; left:-9999px;">{{ form.audio() }}</div>
+        {% for e in form.audio.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        <p class="form-hint" style="margin-top:6px;">Con una traccia caricata i blob nascono sui beat; viene anche unita al video. Lascia vuoto per disattivare.</p>
+        <div data-show-when-file="audio">
+          {{ c.sel(form.audio_band) }}
+          {{ c.rng(form.audio_sensitivity, 0.1, 3.0, 0.1) }}
+          {{ c.rng(form.audio_offset, 0.0, 60.0, 0.5) }}
+          <div class="grid-3">{{ c.chk(form.audio_modulate_size) }}{{ c.chk(form.audio_modulate_thickness) }}{{ c.chk(form.audio_modulate_glow) }}</div>
+          {{ c.rng(form.audio_mod_intensity, 0.0, 2.0, 0.1) }}
+        </div>
       </div>
 
       {% include "_config_sections.html" %}

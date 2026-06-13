@@ -19,8 +19,12 @@ def _uploads_dir():
     return path
 
 
-def process_video(file_storage, settings_dict):
-    """Elabora il video caricato. Ritorna il nome del file output (in static/uploads)."""
+def process_video(file_storage, settings_dict, audio_storage=None):
+    """Elabora il video caricato. Ritorna il nome del file output (in static/uploads).
+
+    Se `audio_storage` contiene una traccia, la reattività audio si attiva: il
+    motore rileva i beat (spawn blob) ed esegue il mux con ffmpeg sul video finale.
+    """
     uploads = _uploads_dir()
     job = uuid.uuid4().hex
 
@@ -28,10 +32,19 @@ def process_video(file_storage, settings_dict):
     in_path = os.path.join(uploads, f"_in_{job}_{in_name}")
     file_storage.save(in_path)
 
+    # La traccia audio è opzionale: presenza del file = reattività attiva.
+    audio_path = None
+    if audio_storage and getattr(audio_storage, "filename", ""):
+        a_name = secure_filename(audio_storage.filename) or "audio"
+        audio_path = os.path.join(uploads, f"_aud_{job}_{a_name}")
+        audio_storage.save(audio_path)
+
     try:
         config = ProcessingConfig(**settings_dict).model_dump()
         config["input_path"] = in_path
         config["output_folder"] = uploads
+        config["audio_enabled"] = audio_path is not None
+        config["audio_path"] = audio_path
 
         out_path = run_video(config)
 
@@ -40,5 +53,6 @@ def process_video(file_storage, settings_dict):
         os.replace(out_path, os.path.join(uploads, final_name))
         return final_name
     finally:
-        if os.path.exists(in_path):
-            os.remove(in_path)
+        for path in (in_path, audio_path):
+            if path and os.path.exists(path):
+                os.remove(path)

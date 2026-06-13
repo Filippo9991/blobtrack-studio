@@ -315,6 +315,8 @@ input[type="checkbox"]:checked::before, .acid-checkbox:checked::before { transfo
 .studio-preview img { max-width: 100%; max-height: calc(100vh - 120px); border: 1px solid var(--line); }
 .studio-preview .placeholder { color: var(--muted-2); text-align: center; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.75rem; }
 
+[hidden] { display: none !important; } /* gruppi di controlli a comparsa condizionale */
+
 /* --- Live cam --- */
 .live-stage { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; }
 .live-stage #cam-video { display: none; } /* sorgente: disegnata su canvas, mai mostrata */
