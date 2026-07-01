@@ -2059,13 +2059,16 @@ class LiveEngine:
             sol.close()
         self._mp_state.clear()
 
-    def process_frame(self, frame, config):
+    def process_frame(self, frame, config, mod_energy=0.0):
         """
         Full pipeline: flip -> detect -> MP blobs -> track -> merge -> render.
 
         Args:
             frame: BGR numpy array from camera
             config: ProcessingConfig (pydantic model)
+            mod_energy: energia audio 0..1 fornita dal chiamante (es. livello del
+                microfono calcolato nel browser); modula size/thickness/glow
+                secondo i flag audio_modulate_* del config.
         Returns:
             rendered frame (numpy array)
         """
@@ -2214,10 +2217,22 @@ class LiveEngine:
         h_img, w_img = frame_clean.shape[:2]
         rc.frame_center = (w_img // 2, h_img // 2)
 
+        # Audio modulation (stessa semantica del preview video: thickness/glow
+        # si applicano sul RenderConfig, la size passa via mod_energy)
+        energy = max(0.0, min(1.0, float(mod_energy)))
+        size_energy = 0.0
+        if energy > 0:
+            if c.audio_modulate_thickness:
+                rc.blob_thickness = max(1, int(c.blob_thickness * (1.0 + energy * c.audio_mod_intensity)))
+            if c.audio_modulate_glow:
+                rc.glow_intensity = c.glow_intensity * (1.0 + energy * c.audio_mod_intensity)
+            if c.audio_modulate_size:
+                size_energy = energy * c.audio_mod_intensity
+
         # Buffer pool
         if self._buffer_pool is None or not self._buffer_pool.fits(h_img, w_img):
             self._buffer_pool = BufferPool(h_img, w_img)
 
         return render_frame(frame_clean, frame_ai, render_blobs, rc,
-                            self.trail_history, mod_energy=0.0,
+                            self.trail_history, mod_energy=size_energy,
                             buffers=self._buffer_pool)

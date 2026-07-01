@@ -43,6 +43,41 @@ def test_live_frame_rejects_missing_frame(client):
     assert r.status_code == 400
 
 
+def test_live_frame_stream_keeps_state(client, sample_png):
+    """Con uno stream id lo stato del motore persiste fra i frame (scie/tracking)."""
+    register_and_login(client, "userstream")
+    from app.services import frame_engine
+
+    frame_engine._live_sessions.clear()  # registry globale: isola il test
+    cfg = {"detection_engine": "color", "threshold_mode": "fixed", "trails_enabled": True}
+    for _ in range(2):
+        r = client.post(
+            "/live/frame",
+            json={"frame": _data_url(sample_png), "config": cfg, "stream": "s1"},
+        )
+        assert r.status_code == 200 and r.data[:2] == b"\xff\xd8"
+
+    assert len(frame_engine._live_sessions) == 1
+    ((key, entry),) = frame_engine._live_sessions.items()
+    assert key.endswith(":s1")
+    assert entry["engine"]._frame_count == 2  # nessun reset fra i frame
+
+
+def test_live_frame_audio_level_modulates(client, sample_png):
+    """Il livello del microfono viene accettato e modula il rendering senza errori."""
+    register_and_login(client, "usermic")
+    cfg = {
+        "detection_engine": "color", "threshold_mode": "fixed",
+        "audio_modulate_size": True, "audio_mod_intensity": 1.5,
+    }
+    r = client.post(
+        "/live/frame",
+        json={"frame": _data_url(sample_png), "config": cfg,
+              "stream": "s2", "audio_level": 0.9},
+    )
+    assert r.status_code == 200 and r.mimetype == "image/jpeg"
+
+
 def test_live_save_preset(client, app):
     register_and_login(client, "userlivepreset")
     data = dict(BASE)

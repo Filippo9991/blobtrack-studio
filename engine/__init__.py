@@ -19,7 +19,23 @@ from functools import lru_cache
 from engine import options
 from engine.schemas import ProcessingConfig
 
-__all__ = ["ProcessingConfig", "options", "process_image_frame", "run_video", "capabilities"]
+__all__ = [
+    "ProcessingConfig", "options", "process_image_frame", "run_video",
+    "capabilities", "create_live_engine",
+]
+
+
+def create_live_engine():
+    """Istanza dedicata di LiveEngine, con stato di tracking persistente.
+
+    Per lo streaming live: il chiamante la tiene per la durata della sessione
+    (scie e ID stabili si accumulano fra i frame) e chiama
+    `engine.process_frame(frame, config, mod_energy=...)` per ogni frame.
+    I modelli pesanti restano lazy: senza YOLO/MediaPipe si degrada da soli.
+    """
+    from engine.blob_engine import LiveEngine
+
+    return LiveEngine()
 
 
 @lru_cache(maxsize=1)

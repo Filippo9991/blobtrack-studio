@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_controls.html" as c %}
 {% block title %}Live — BlobTrack{% endblock %}
 
 {% block content %}
@@ -22,6 +23,28 @@
         </p>
       </div>
 
+      <div class="sb-section">
+        <h3 class="section-title">Motion</h3>
+        {{ c.rng(form.smoothing, 0, 60) }}
+        {{ c.rng(form.persistence, 0, 100) }}
+        {{ c.chk(form.persistence_fade) }}
+        {{ c.rng(form.tracker_match_radius, 50, 500) }}
+        {{ c.chk(form.trails_enabled) }}
+        <div data-show-when-checked="trails_enabled">
+          {{ c.rng(form.trail_length, 5, 60) }}
+          {{ c.rng(form.trail_opacity, 0.1, 1.0, 0.05) }}
+          {{ c.sel(form.trail_style) }}
+        </div>
+      </div>
+
+      <div class="sb-section">
+        <h3 class="section-title">Microfono</h3>
+        <p class="form-hint">Attiva una modulazione e il livello del microfono anima i
+          blob in tempo reale (il permesso viene chiesto alla prima attivazione).</p>
+        <div class="grid-3">{{ c.chk(form.audio_modulate_size) }}{{ c.chk(form.audio_modulate_thickness) }}{{ c.chk(form.audio_modulate_glow) }}</div>
+        {{ c.rng(form.audio_mod_intensity, 0.0, 2.0, 0.1) }}
+      </div>
+
       {% include "_config_sections.html" %}
 
       <div class="sb-section">
@@ -42,7 +65,7 @@
       <video id="cam-video" playsinline muted></video>
       <img id="live-output" alt="Output live" />
       <div class="placeholder" id="live-placeholder">Avvia la camera · regola i parametri · guarda l'output</div>
-      <div class="live-hud" id="live-hud" hidden><span id="live-fps">0</span> FPS</div>
+      <div class="live-hud" id="live-hud" hidden><span id="live-fps">0</span> FPS · <span id="live-transport">HTTP</span></div>
     </div>
   </section>
 </div>

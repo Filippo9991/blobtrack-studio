@@ -166,27 +166,8 @@ class StudioForm(_ConfigFieldsForm):
     submit = SubmitField("Elabora")
 
 
-class LiveForm(_ConfigFieldsForm):
-    """Live cam: solo parametri di stile (i frame arrivano dalla webcam del browser).
-
-    Niente upload e niente parametri temporali: il motore in modalità immagine
-    azzera lo stato di tracking ad ogni frame, quindi scie/persistenza non si
-    accumulerebbero. `preset_name` serve per salvare preset o snapshot.
-    """
-    preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
-    submit = SubmitField("Salva")
-
-
-class VideoForm(_ConfigFieldsForm):
-    video = FileField(
-        "Sorgente video",
-        validators=[
-            FileRequired("Carica un video."),
-            FileAllowed(["mp4", "mov", "avi", "webm", "mkv"], "Solo video (mp4, mov, avi, webm, mkv)."),
-        ],
-    )
-    # Parametri temporali (hanno senso solo sul video)
-    frame_skip = IntegerField("Frame skip", validators=[NumberRange(1, 10)], default=1)
+class _MotionFields:
+    """Tracking fra frame + scie: condivisi da Video e Live (mixin WTForms)."""
     smoothing = IntegerField("Smoothing", validators=[NumberRange(0, 60)], default=5)
     persistence = IntegerField("Persistenza", validators=[NumberRange(0, 100)], default=30)
     persistence_fade = BooleanField("Fade persistenza")
@@ -194,7 +175,38 @@ class VideoForm(_ConfigFieldsForm):
     trails_enabled = BooleanField("Scie (trails)")
     trail_length = IntegerField("Lunghezza scia", validators=[NumberRange(5, 60)], default=20)
     trail_opacity = FloatField("Opacità scia", validators=[NumberRange(0.1, 1.0)], default=0.6)
-    trail_style = SelectField("Stile scia", choices=opt.choices(opt.TRAIL_STYLES))
+    trail_style = SelectField("Stile scia", choices=opt.choices(opt.TRAIL_STYLES), default="line")
+
+
+class _AudioModFields:
+    """Modulazione audio del rendering (video: traccia caricata; live: microfono)."""
+    audio_modulate_size = BooleanField("Modula dimensione")
+    audio_modulate_thickness = BooleanField("Modula spessore")
+    audio_modulate_glow = BooleanField("Modula glow")
+    audio_mod_intensity = FloatField("Intensità modulazione", validators=[NumberRange(0.0, 2.0)], default=1.0)
+
+
+class LiveForm(_ConfigFieldsForm, _MotionFields, _AudioModFields):
+    """Live cam: parametri di stile + motion (i frame arrivano dalla webcam).
+
+    Lo stato di tracking è per-sessione di stream (frame_engine): scie e ID
+    stabili si accumulano fra i frame. La modulazione audio usa il livello del
+    microfono calcolato nel browser. `preset_name` per salvare preset/snapshot.
+    """
+    preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
+    submit = SubmitField("Salva")
+
+
+class VideoForm(_ConfigFieldsForm, _MotionFields, _AudioModFields):
+    video = FileField(
+        "Sorgente video",
+        validators=[
+            FileRequired("Carica un video."),
+            FileAllowed(["mp4", "mov", "avi", "webm", "mkv"], "Solo video (mp4, mov, avi, webm, mkv)."),
+        ],
+    )
+    # Parametri temporali che hanno senso solo sul file video
+    frame_skip = IntegerField("Frame skip", validators=[NumberRange(1, 10)], default=1)
     # Audio reactivity — la reattività si attiva caricando una traccia (audio_enabled
     # e audio_path li imposta il service in base al file). Questi sono i parametri.
     audio = FileField(
@@ -207,10 +219,6 @@ class VideoForm(_ConfigFieldsForm):
     audio_band = SelectField("Banda", choices=opt.choices(opt.AUDIO_BANDS), default="bass")
     audio_sensitivity = FloatField("Sensibilità beat", validators=[NumberRange(0.1, 3.0)], default=1.0)
     audio_offset = FloatField("Offset (s)", validators=[NumberRange(0.0, 60.0)], default=0.0)
-    audio_modulate_size = BooleanField("Modula dimensione")
-    audio_modulate_thickness = BooleanField("Modula spessore")
-    audio_modulate_glow = BooleanField("Modula glow")
-    audio_mod_intensity = FloatField("Intensità modulazione", validators=[NumberRange(0.0, 2.0)], default=1.0)
     preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
     submit = SubmitField("Elabora video")
 

@@ -25,7 +25,7 @@ Progetto d'esame: applicazione web completa con **Python + Flask**.
 - 🖼️ **Studio immagine** — upload → blob detection (color engine o YOLO) + styling completo: forme, wireframe, colormap interne, glow, etichette, ~60 parametri regolabili
 - 🎬 **Video processing** — upload di un video → elaborazione frame-per-frame con tracker e scie di movimento → download MP4 (H.264)
 - 🎵 **Audio reactivity** — aggiungi una traccia audio al video: beat detection e analisi RMS (librosa) modulano dimensioni, spessori e glow a tempo di musica; l'audio viene muxato nel file finale (ffmpeg)
-- 📹 **Live cam** — la webcam del browser invia i frame al server che li restituisce elaborati in near-real-time (FPS adattivo); snapshot salvabili in galleria
+- 📹 **Live cam** — la webcam del browser invia i frame al server via **WebSocket** (fallback HTTP automatico) e li riceve elaborati in near-real-time; scie e tracking **persistenti per stream** e **reattività al microfono** (WebAudio); snapshot salvabili in galleria
 - 🗂️ **Galleria personale** — le creazioni salvate come record sul database, scaricabili
 - 🎚️ **Preset di stile** — salva e riapplica le configurazioni, interscambiabili tra immagine, video e live
 - 🤖 **AI Preset Generator** — descrivi un look a parole e l'AI (Groq) costruisce il preset
@@ -50,7 +50,7 @@ MediaPipe, reattività audio). L'app rileva le librerie presenti e adatta UI e m
 | Template | Jinja2 (con template inheritance) |
 | API esterna | Groq (LLM gratuito, endpoint OpenAI-compatibile) |
 | Deploy | Gunicorn, Render |
-| Test | pytest (32 test, capability-aware) |
+| Test | pytest (34 test, capability-aware) |
 
 ---
 
@@ -91,11 +91,11 @@ nessuna configurazione manuale.
 ### Eseguire i test
 
 ```bash
-pytest        # 32 test: auth, GDPR, studio, video (+audio, +limiti), live, engine, AI
+pytest        # 34 test: auth, GDPR, studio, video (+audio, +limiti), live (+stream, +mic), engine, AI
 ```
 
 La suite è capability-aware: i test che richiedono le dipendenze pesanti vengono
-saltati automaticamente sul profilo lite (31 passed, 1 skipped).
+saltati automaticamente sul profilo lite (33 passed, 1 skipped).
 
 ---
 
@@ -152,7 +152,7 @@ app/                   APPLICAZIONE WEB (Flask)
   models.py            User, Creation, Preset
   forms.py             form Flask-WTF (config condivisa da Studio/Video/Live)
   decorators.py        @login_required
-  blueprints/          main, auth, studio (immagine/video/live), assistant
+  blueprints/          main, auth, studio (immagine/video/live), live_ws (WebSocket), assistant
   services/            frame_engine (immagine/live), video_processing, ai_presets (Groq)
   templates/           Jinja2 (base + pagine + macro condivise, stile "acid")
   static/              CSS (design system), JS (live cam, campi condizionali)

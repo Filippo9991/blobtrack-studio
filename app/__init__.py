@@ -9,7 +9,7 @@ import os
 from flask import Flask, render_template, session
 
 from config import config_by_name
-from app.extensions import db
+from app.extensions import db, sock
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,6 +24,12 @@ def create_app(config_name=None):
     os.makedirs(app.instance_path, exist_ok=True)
 
     db.init_app(app)
+
+    # WebSocket del Live: l'import dichiara la route /live/ws sull'estensione,
+    # init_app la registra sull'app (l'ordine conta).
+    from app.blueprints import live_ws  # noqa: F401
+
+    sock.init_app(app)
 
     # --- Blueprints ---
     from app.blueprints.main import main_bp

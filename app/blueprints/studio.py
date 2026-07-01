@@ -20,7 +20,11 @@ from app.decorators import login_required
 from app.extensions import db
 from app.forms import DeleteForm, LiveForm, StudioForm, VideoForm
 from app.models import Creation, Preset
-from app.services.frame_engine import render_frame_jpeg, render_image
+from app.services.frame_engine import (
+    render_frame_jpeg,
+    render_image,
+    render_live_frame_jpeg,
+)
 from app.services.video_processing import process_video
 
 studio_bp = Blueprint("studio", __name__)
@@ -274,21 +278,37 @@ def live():
     return redirect(url_for("studio.presets"))
 
 
+def _clamp_audio_level(value):
+    """Livello mic dal client → float 0..1 (input non fidato)."""
+    try:
+        return min(1.0, max(0.0, float(value)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 @studio_bp.route("/live/frame", methods=["POST"])
 @login_required
 def live_frame():
     """Riceve un frame (data URL JPEG) + config JSON, ritorna il frame elaborato.
 
     Endpoint di sola elaborazione (nessuna scrittura su DB): chiamato in loop dal
-    client. Risponde con i byte JPEG così il browser li mostra direttamente."""
+    client. Risponde con i byte JPEG così il browser li mostra direttamente.
+    Se il client manda un id di `stream`, lo stato di tracking (scie, ID) persiste
+    fra i frame di quello stream; `audio_level` è il livello del microfono."""
     data = request.get_json(silent=True) or {}
     raw = _decode_data_url(data.get("frame"))
     if not raw:
         return {"error": "Frame mancante o non valido."}, 400
 
     config = data.get("config") or {}
+    stream = str(data.get("stream") or "")[:64]
+    audio_level = _clamp_audio_level(data.get("audio_level"))
     try:
-        jpeg = render_frame_jpeg(raw, config)
+        if stream:
+            session_key = f"{session['user_id']}:{stream}"
+            jpeg = render_live_frame_jpeg(raw, config, session_key, audio_level=audio_level)
+        else:  # client senza stream id: elaborazione stateless come prima
+            jpeg = render_frame_jpeg(raw, config)
     except ValueError as exc:
         return {"error": str(exc)}, 400
     except Exception:  # YOLO/MediaPipe possono fallire: non esporre lo stacktrace
