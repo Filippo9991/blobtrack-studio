@@ -1,9 +1,18 @@
 # 💠 BlobTrack Studio
 
-Web app per **blob detection artistica**: l'utente carica un'immagine, l'app rileva
-forme e regioni con **OpenCV** lato server e le ristila con contorni, wireframe e
-filtri creativi. Le creazioni si salvano in una galleria personale e i preset di
-stile possono essere generati da un **assistente AI**.
+Web app per **blob detection artistica**: carichi un'immagine (o un video, o la
+webcam in diretta), l'app rileva forme e regioni con **OpenCV** lato server e le
+ristila con contorni neon, wireframe, colormap e filtri creativi. Le creazioni si
+salvano in una galleria personale e i preset di stile possono essere generati da
+un **assistente AI**.
+
+| Sorgente | Stile "wireframe" |
+|---|---|
+| ![originale](docs/demo/original.png) | ![wireframe](docs/demo/wireframe.png) |
+| **Stile "acid"** | **Stile "thermal"** |
+| ![acid](docs/demo/acid.png) | ![thermal](docs/demo/thermal.png) |
+
+<sub>Le quattro immagini sono generate dal motore dell'app: `venv/bin/python docs/demo/generate.py`</sub>
 
 > 🌐 **Live demo:** _(aggiungi qui l'URL Render dopo il deploy, es. https://blobtrack.onrender.com)_
 
@@ -13,14 +22,17 @@ Progetto d'esame: applicazione web completa con **Python + Flask**.
 
 ## ✨ Funzionalità
 
+- 🖼️ **Studio immagine** — upload → blob detection (color engine o YOLO) + styling completo: forme, wireframe, colormap interne, glow, etichette, ~60 parametri regolabili
+- 🎬 **Video processing** — upload di un video → elaborazione frame-per-frame con tracker e scie di movimento → download MP4 (H.264)
+- 🎵 **Audio reactivity** — aggiungi una traccia audio al video: beat detection e analisi RMS (librosa) modulano dimensioni, spessori e glow a tempo di musica; l'audio viene muxato nel file finale (ffmpeg)
+- 📹 **Live cam** — la webcam del browser invia i frame al server che li restituisce elaborati in near-real-time (FPS adattivo); snapshot salvabili in galleria
+- 🗂️ **Galleria personale** — le creazioni salvate come record sul database, scaricabili
+- 🎚️ **Preset di stile** — salva e riapplica le configurazioni, interscambiabili tra immagine, video e live
+- 🤖 **AI Preset Generator** — descrivi un look a parole e l'AI (Groq) costruisce il preset
 - 🔐 **Autenticazione completa** — registrazione, login, logout, eliminazione account (password hashate con `werkzeug.security`)
 - 🍪 **Banner GDPR** — consenso al trattamento dati salvato sul database
-- 🖼️ **Studio CV** — upload immagine → blob detection + styling con OpenCV, anteprima in tempo reale
-- 🗂️ **Galleria personale** — le creazioni elaborate salvate come record sul database
-- 🎚️ **Preset di stile** — salva e riapplica le tue configurazioni preferite
-- 🤖 **AI Preset Generator** — descrivi un look a parole e l'AI (Groq) costruisce il preset
 - ⚠️ **Pagine d'errore custom** — 404, 500, 413
-- 📱 **Design responsive** — mobile-first, design system con CSS custom properties
+- 📱 **Design responsive** — design system "acid" con CSS custom properties, mobile-first
 
 ---
 
@@ -31,10 +43,11 @@ Progetto d'esame: applicazione web completa con **Python + Flask**.
 | Backend | Python 3.11, Flask, Flask-SQLAlchemy, Flask-WTF |
 | Database | SQLite (sviluppo) · PostgreSQL (produzione) |
 | Computer vision | OpenCV (`opencv-contrib-python-headless`), NumPy, ultralytics (YOLO), MediaPipe |
+| Audio | librosa (beat detection / RMS), ffmpeg (mux) |
 | Template | Jinja2 (con template inheritance) |
 | API esterna | Groq (LLM gratuito, endpoint OpenAI-compatibile) |
 | Deploy | Gunicorn, Render |
-| Test | pytest |
+| Test | pytest (31 test) |
 
 ---
 
@@ -42,8 +55,8 @@ Progetto d'esame: applicazione web completa con **Python + Flask**.
 
 ```bash
 # 1. Clona il repository
-git clone <url-del-repo>
-cd blobTrack
+git clone https://github.com/Filippo9991/blobtrack-studio.git
+cd blobtrack-studio
 
 # 2. Crea e attiva il virtual environment (Python 3.11)
 python3.11 -m venv venv
@@ -63,10 +76,13 @@ flask --app app run --debug
 
 L'app è su http://127.0.0.1:5000. Il database SQLite viene creato automaticamente in `instance/`.
 
+> Per avere l'audio nel video finale serve **ffmpeg** nel PATH (`brew install ffmpeg` /
+> `apt install ffmpeg`); senza, il video viene comunque elaborato ma esce muto.
+
 ### Eseguire i test
 
 ```bash
-pytest
+pytest        # 31 test: auth, GDPR, studio, video (+audio), live, engine, AI
 ```
 
 ---
@@ -108,12 +124,12 @@ app/                   APPLICAZIONE WEB (Flask)
   __init__.py          application factory create_app() + error handlers
   extensions.py        istanza SQLAlchemy
   models.py            User, Creation, Preset
-  forms.py             form Flask-WTF (StudioForm = unica fonte dei campi)
+  forms.py             form Flask-WTF (config condivisa da Studio/Video/Live)
   decorators.py        @login_required
-  blueprints/          main, auth, studio, assistant
-  services/            frame_engine (adapter web→engine), ai_presets (Groq)
-  templates/           Jinja2 (base + pagine, stile "acid")
-  static/              CSS (design system) e JS
+  blueprints/          main, auth, studio (immagine/video/live), assistant
+  services/            frame_engine (immagine/live), video_processing, ai_presets (Groq)
+  templates/           Jinja2 (base + pagine + macro condivise, stile "acid")
+  static/              CSS (design system), JS (live cam, campi condizionali)
 
 engine/                MOTORE COMPUTER VISION (indipendente da Flask)
   __init__.py          API pubblica: ProcessingConfig, options, process_image_frame, run_video
@@ -121,5 +137,29 @@ engine/                MOTORE COMPUTER VISION (indipendente da Flask)
   frame_processor.py audio_processor.py signal_math.py schemas.py options.py
   models/              modelli MediaPipe (.task / .tflite)
 
-tests/                 suite pytest
+docs/demo/             immagini del README + script che le rigenera
+tests/                 suite pytest (31 test)
 ```
+
+---
+
+## ✅ Mappa dei requisiti d'esame
+
+| # | Requisito | Dove |
+|---|-----------|------|
+| 1 | Stack: Flask, Flask-SQLAlchemy, SQLite in `instance/`, Jinja2, Flask-WTF, venv | `config.py`, `app/__init__.py`, `requirements.txt` |
+| 2 | Autenticazione completa (register/login/logout/eliminazione) con hash `werkzeug.security` | `app/blueprints/auth.py`, `app/models.py` (`set_password`/`check_password`) |
+| 3 | Cookie banner GDPR, consenso salvato su DB, non riappare | `app/templates/base.html`, `app/blueprints/main.py` (`/consent`), `User.cookie_consent` |
+| 4 | Dati per-utente su DB (≥2 tipologie) | `Creation` (galleria) e `Preset` (configurazioni) in `app/models.py` |
+| 5 | API esterna server-side con try/except, `timeout=5`, key in `.env`, `None` su errore | `app/services/ai_presets.py` (Groq) |
+| 6 | Template inheritance, `{{ }}`, `for`/`if`, `url_for()` | `app/templates/` (tutti estendono `base.html`) |
+| 7 | Form Flask-WTF: validators, `hidden_tag()`, errori nel template, `validate_on_submit()` | `app/forms.py`, template relativi |
+| 8 | Flash messages con categorie CSS (`success`/`error`/`warning`) | `base.html` (`get_flashed_messages(with_categories=true)`) |
+| 9 | `@login_required` con `functools.wraps` su dashboard/profile/dati personali | `app/decorators.py`, `app/blueprints/studio.py`, `auth.py` |
+| 10 | ≥2 modelli in relazione, FK `nullable=False`, `unique` su username/email | `app/models.py` (User 1─* Creation, User 1─* Preset, cascade) |
+| 11 | Error page custom 404 e 500 (con `db.session.rollback()`) | `app/__init__.py`, `templates/404.html`, `500.html` (+ `413.html`) |
+| 12 | Nessun segreto nel codice: `.env` + `.env.example`, lettura da environment | `config.py`, `.env.example`, `.gitignore` |
+| 13 | Repo GitHub pubblico, ≥5 commit significativi, `.gitignore` corretto | [github.com/Filippo9991/blobtrack-studio](https://github.com/Filippo9991/blobtrack-studio) |
+| 14 | Responsive: viewport meta, media query, Flexbox/Grid | `base.html`, `app/static/css/style.css` (`@media (max-width: 860px)`) |
+| 15 | Design system: CSS custom properties in `:root`, componenti con `var()` | `app/static/css/style.css` |
+| 16 | Empty state con call-to-action dove non ci sono dati | `dashboard.html`, `presets.html` (`{% if %}…{% else %}`) |
