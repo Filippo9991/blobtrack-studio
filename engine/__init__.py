@@ -11,12 +11,39 @@ API pubblica (il layer web importa solo da qui):
 - `run_video(config, progress_callback)` → modalità VIDEO (Pass 2): job con
   stato isolato per l'intera sequenza.
 """
+import importlib.util
+import shutil
 import threading
+from functools import lru_cache
 
 from engine import options
 from engine.schemas import ProcessingConfig
 
-__all__ = ["ProcessingConfig", "options", "process_image_frame", "run_video"]
+__all__ = ["ProcessingConfig", "options", "process_image_frame", "run_video", "capabilities"]
+
+
+@lru_cache(maxsize=1)
+def capabilities():
+    """Dipendenze opzionali disponibili nell'ambiente corrente.
+
+    Il progetto ha due profili: `requirements.txt` (lite, deploy) e
+    `requirements-local.txt` (full). Il layer web usa questa mappa per
+    nascondere le funzioni non disponibili. `find_spec` controlla la presenza
+    dei package senza importarli (niente caricamento di torch all'avvio).
+    """
+    return {
+        "yolo": _has_module("ultralytics"),
+        "mediapipe": _has_module("mediapipe"),
+        "audio": _has_module("librosa"),
+        "ffmpeg": shutil.which("ffmpeg") is not None,
+    }
+
+
+def _has_module(name):
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):  # package rovinato/bloccato = non disponibile
+        return False
 
 _engine = None
 _engine_lock = threading.Lock()

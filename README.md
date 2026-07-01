@@ -34,6 +34,9 @@ Progetto d'esame: applicazione web completa con **Python + Flask**.
 - ⚠️ **Pagine d'errore custom** — 404, 500, 413
 - 📱 **Design responsive** — design system "acid" con CSS custom properties, mobile-first
 
+Due profili di installazione: **lite** (deploy, solo OpenCV) e **full** (locale: YOLO,
+MediaPipe, reattività audio). L'app rileva le librerie presenti e adatta UI e motore da sola.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -47,7 +50,7 @@ Progetto d'esame: applicazione web completa con **Python + Flask**.
 | Template | Jinja2 (con template inheritance) |
 | API esterna | Groq (LLM gratuito, endpoint OpenAI-compatibile) |
 | Deploy | Gunicorn, Render |
-| Test | pytest (31 test) |
+| Test | pytest (32 test, capability-aware) |
 
 ---
 
@@ -62,8 +65,10 @@ cd blobtrack-studio
 python3.11 -m venv venv
 source venv/bin/activate        # su Windows: venv\Scripts\activate
 
-# 3. Installa le dipendenze
-pip install -r requirements.txt
+# 3. Installa le dipendenze — scegli il profilo:
+pip install -r requirements-local.txt   # FULL: YOLO, MediaPipe, audio (~2GB, consigliato in locale)
+#   oppure
+pip install -r requirements.txt         # LITE: solo color detection (~260MB, come la demo online)
 
 # 4. Configura le variabili d'ambiente
 cp .env.example .env
@@ -76,14 +81,21 @@ flask --app app run --debug
 
 L'app è su http://127.0.0.1:5000. Il database SQLite viene creato automaticamente in `instance/`.
 
+**L'app si adatta da sola al profilo installato** (`engine.capabilities()`): con il profilo
+lite le sezioni YOLO/MediaPipe/audio spariscono dalla UI e il motore degrada con grazia —
+nessuna configurazione manuale.
+
 > Per avere l'audio nel video finale serve **ffmpeg** nel PATH (`brew install ffmpeg` /
 > `apt install ffmpeg`); senza, il video viene comunque elaborato ma esce muto.
 
 ### Eseguire i test
 
 ```bash
-pytest        # 31 test: auth, GDPR, studio, video (+audio), live, engine, AI
+pytest        # 32 test: auth, GDPR, studio, video (+audio, +limiti), live, engine, AI
 ```
+
+La suite è capability-aware: i test che richiedono le dipendenze pesanti vengono
+saltati automaticamente sul profilo lite (31 passed, 1 skipped).
 
 ---
 
@@ -101,14 +113,26 @@ Nessun valore sensibile è committato: `.env` è nel `.gitignore`, ed è present
 
 ---
 
-## ☁️ Deploy su Render
+## ☁️ Deploy su Render (free tier)
+
+Il repo include un [`render.yaml`](render.yaml) (Blueprint): **Dashboard → New → Blueprint →
+collega il repo → Apply**. Crea da solo web service + PostgreSQL free già collegati; l'unica
+variabile da inserire a mano è `GROQ_API_KEY`. Le tabelle vengono create automaticamente
+all'avvio (`db.create_all()` idempotente).
+
+Sulla demo free tier (512MB RAM, 0.1 CPU) gira il profilo **lite**: color detection completa,
+galleria, preset, AI; l'elaborazione video è limitata a 15s / 480px (`VIDEO_MAX_*`), mentre
+YOLO/MediaPipe/reattività audio sono funzioni della versione locale.
+
+<details>
+<summary>Deploy manuale (senza Blueprint)</summary>
 
 1. Crea un database **PostgreSQL** (Free) e copia la *Internal Database URL*.
 2. Crea un **Web Service** collegato a questo repository GitHub:
    - Build Command: `pip install -r requirements.txt`
-   - Start Command: `gunicorn wsgi:app`
+   - Start Command: `gunicorn wsgi:app --workers 1 --threads 4 --timeout 300`
 3. Imposta le **Environment Variables**: `SECRET_KEY`, `DATABASE_URL`, `GROQ_API_KEY`, `FLASK_ENV=production`.
-4. Deploy. Le tabelle vengono create automaticamente all'avvio (`db.create_all()` idempotente).
+</details>
 
 ---
 
@@ -118,7 +142,9 @@ Due package separati: `app/` (web) dipende da `engine/` (CV), mai il contrario.
 
 ```
 wsgi.py                entrypoint produzione (gunicorn wsgi:app)
-config.py              configurazione multi-ambiente
+config.py              configurazione multi-ambiente (+ limiti video di produzione)
+render.yaml            deploy one-click su Render (web service + PostgreSQL free)
+requirements.txt       profilo LITE (deploy) · requirements-local.txt = profilo FULL
 
 app/                   APPLICAZIONE WEB (Flask)
   __init__.py          application factory create_app() + error handlers

@@ -7,8 +7,15 @@ from collections import deque
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from . import frame_processor
-from . import audio_processor
 from .signal_math import OneEuroFilter
+
+try:
+    from . import audio_processor
+    AUDIO_AVAILABLE = True
+except ImportError:
+    audio_processor = None
+    AUDIO_AVAILABLE = False
+    print("Warning: librosa not installed. Audio reactivity disabled.")
 
 try:
     from ultralytics import YOLO
@@ -1400,7 +1407,7 @@ class BlobEngine:
             'clean_frame': None,
             'blobs': [],
         }
-        self.audio_proc = audio_processor.AudioProcessor()
+        self.audio_proc = audio_processor.AudioProcessor() if AUDIO_AVAILABLE else None
         
         # --- PREVIEW STATE FOR AUDIO QUEUE ---
         self.preview_queue = [] # List of indices (e.g., [0, 1, 2]) of blobs to show
@@ -1457,7 +1464,7 @@ class BlobEngine:
 
         # --- AUDIO QUEUE LOGIC (shared for cache hit and miss) ---
         def _update_audio_queue():
-            if not (c.audio_enabled and c.audio_path):
+            if not (AUDIO_AVAILABLE and c.audio_enabled and c.audio_path):
                 return
             try:
                 fps = 30.0
@@ -1518,14 +1525,14 @@ class BlobEngine:
                 self.cache['blobs'] = blobs
 
         # --- AUDIO FILTERING (QUEUE MAPPING) ---
-        if c.audio_enabled and c.audio_path:
+        if AUDIO_AVAILABLE and c.audio_enabled and c.audio_path:
             filtered = [blobs[idx] for idx in self.preview_queue if idx < len(blobs)]
         else:
             filtered = blobs
 
         # --- AUDIO MODULATION ---
         preview_mod_energy = 0.0
-        if c.audio_enabled and c.audio_path and (c.audio_modulate_size or c.audio_modulate_thickness or c.audio_modulate_glow):
+        if AUDIO_AVAILABLE and c.audio_enabled and c.audio_path and (c.audio_modulate_size or c.audio_modulate_thickness or c.audio_modulate_glow):
             try:
                 fps_prev = 30.0
                 if self.cap:
@@ -1642,6 +1649,9 @@ def run_processing(config, progress_callback=None):
     output_folder = config['output_folder']
 
     max_blobs = config['max_blobs']
+    if config.get('audio_enabled') and not AUDIO_AVAILABLE:
+        print(">>> librosa non disponibile: reattivita' audio disattivata per questo job.")
+        config['audio_enabled'] = False
     detection_engine = config.get('detection_engine', 'color')
     yolo_model_file = config.get('yolo_model_file', 'yolov8n.pt')
     blob_shape = config['blob_shape']
@@ -1656,6 +1666,27 @@ def run_processing(config, progress_callback=None):
     fps = cap.get(cv2.CAP_PROP_FPS)
     w_frame, h_frame = int(cap.get(3)), int(cap.get(4))
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    # Limiti opzionali (demo su server piccoli): risoluzione e durata massime.
+    # I frame vengono ridotti subito dopo la lettura, tutta la pipeline a valle
+    # lavora già sulle dimensioni di output.
+    limit_dim = int(config.get('limit_max_dim') or 0)
+    scale_to = None
+    if limit_dim and max(w_frame, h_frame) > limit_dim:
+        ratio = limit_dim / max(w_frame, h_frame)
+        # dimensioni pari: richieste da molti codec
+        w_frame = max(2, int(w_frame * ratio) // 2 * 2)
+        h_frame = max(2, int(h_frame * ratio) // 2 * 2)
+        scale_to = (w_frame, h_frame)
+        print(f">>> Limite risoluzione attivo: output {w_frame}x{h_frame}.")
+    limit_frames = int(config.get('limit_max_frames') or 0)
+    limit_seconds = float(config.get('limit_max_seconds') or 0)
+    if limit_seconds and fps > 0:
+        sec_frames = int(limit_seconds * fps)
+        limit_frames = min(limit_frames, sec_frames) if limit_frames else sec_frames
+    if limit_frames and (total_frames <= 0 or total_frames > limit_frames):
+        total_frames = limit_frames
+        print(f">>> Limite durata attivo: max {limit_frames} frame.")
 
     processor = frame_processor.FrameProcessor(config)
 
@@ -1703,7 +1734,7 @@ def run_processing(config, progress_callback=None):
     buffer_pool = BufferPool(h_frame, w_frame)
 
     # AUDIO SETUP
-    audio_proc_export = audio_processor.AudioProcessor()
+    audio_proc_export = audio_processor.AudioProcessor() if AUDIO_AVAILABLE else None
     beat_map = set()
     audio_mod_size = config.get('audio_modulate_size', False)
     audio_mod_thickness = config.get('audio_modulate_thickness', False)
@@ -1736,6 +1767,10 @@ def run_processing(config, progress_callback=None):
         ret, frame = cap.read()
         if not ret:
             break
+        if limit_frames and frame_count >= limit_frames:
+            break
+        if scale_to:
+            frame = cv2.resize(frame, scale_to, interpolation=cv2.INTER_AREA)
 
         # Audio trigger logic
         is_beat = False

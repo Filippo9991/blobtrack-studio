@@ -45,6 +45,9 @@ def process_video(file_storage, settings_dict, audio_storage=None):
         config["output_folder"] = uploads
         config["audio_enabled"] = audio_path is not None
         config["audio_path"] = audio_path
+        # Limiti di durata/risoluzione (attivi in produzione, 0 = illimitato)
+        config["limit_max_seconds"] = current_app.config.get("VIDEO_MAX_SECONDS", 0)
+        config["limit_max_dim"] = current_app.config.get("VIDEO_MAX_DIM", 0)
 
         out_path = run_video(config)
 

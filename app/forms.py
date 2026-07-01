@@ -28,6 +28,7 @@ from wtforms.validators import (
     Optional,
 )
 
+from engine import capabilities
 from engine import options as opt
 
 
@@ -62,6 +63,18 @@ class DeleteForm(FlaskForm):
 # --- Parametri di stile del motore (condivisi Studio + Video) --------------
 
 class _ConfigFieldsForm(FlaskForm):
+    def __init__(self, *args, **kwargs):
+        """Adatta le scelte alle capability dell'ambiente (profilo lite vs full).
+
+        Senza ultralytics l'opzione YOLO sparisce dal select: la validazione
+        WTForms rifiuta così anche i POST costruiti a mano che la richiedono.
+        """
+        super().__init__(*args, **kwargs)
+        if not capabilities()["yolo"]:
+            self.detection_engine.choices = [
+                c for c in self.detection_engine.choices if c[0] != "yolo"
+            ]
+
     # Detection
     detection_engine = SelectField("Engine", choices=opt.choices(opt.DETECTION_ENGINES))
     yolo_model_file = SelectField("Modello YOLO", choices=opt.choices(opt.YOLO_MODELS), default="yolov8n.pt")

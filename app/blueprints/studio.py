@@ -14,6 +14,8 @@ from flask import (
     url_for,
 )
 
+from engine import capabilities
+
 from app.decorators import login_required
 from app.extensions import db
 from app.forms import DeleteForm, LiveForm, StudioForm, VideoForm
@@ -181,8 +183,17 @@ def video():
         return render_template("video.html", form=form, result=None)
 
     settings = _form_to_settings(form)
+    audio_file = form.audio.data
+    if audio_file and not capabilities()["audio"]:
+        # Profilo lite (la UI nasconde il campo, ma un POST può arrivare comunque)
+        audio_file = None
+        flash(
+            "Reattività audio non disponibile su questo server: "
+            "il video è stato elaborato senza traccia.",
+            "warning",
+        )
     try:
-        result = process_video(form.video.data, settings, form.audio.data)
+        result = process_video(form.video.data, settings, audio_file)
     except Exception as exc:  # codec/IO/engine: non esporre lo stacktrace
         current_app.logger.exception("Errore di elaborazione video")
         flash(f"Elaborazione video fallita: {exc}", "error")

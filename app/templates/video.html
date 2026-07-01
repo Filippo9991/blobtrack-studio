@@ -34,6 +34,7 @@
 
       <div class="sb-section">
         <h3 class="section-title">Audio</h3>
+        {% if caps.audio %}
         <label class="upload-btn" for="{{ form.audio.id }}"><span class="fname">Carica traccia audio</span></label>
         <div style="position:absolute; left:-9999px;">{{ form.audio() }}</div>
         {% for e in form.audio.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
@@ -45,11 +46,22 @@
           <div class="grid-3">{{ c.chk(form.audio_modulate_size) }}{{ c.chk(form.audio_modulate_thickness) }}{{ c.chk(form.audio_modulate_glow) }}</div>
           {{ c.rng(form.audio_mod_intensity, 0.0, 2.0, 0.1) }}
         </div>
+        {% else %}
+        <p class="form-hint">Reattività audio (beat detection + mux) disponibile nella
+          versione locale (profilo full: <code>pip install -r requirements-local.txt</code>).</p>
+        {% endif %}
       </div>
 
       {% include "_config_sections.html" %}
 
       <div class="sb-section">
+        {% if config.VIDEO_MAX_SECONDS or config.VIDEO_MAX_DIM %}
+        <p class="form-hint">Su questo server demo l'elaborazione è limitata a
+          {% if config.VIDEO_MAX_SECONDS %}{{ config.VIDEO_MAX_SECONDS }}s{% endif %}
+          {% if config.VIDEO_MAX_SECONDS and config.VIDEO_MAX_DIM %}·{% endif %}
+          {% if config.VIDEO_MAX_DIM %}{{ config.VIDEO_MAX_DIM }}px{% endif %}
+          e può richiedere qualche minuto. In locale nessun limite.</p>
+        {% endif %}
         <button type="submit" class="btn btn-block">Elabora video</button>
       </div>
     </form>

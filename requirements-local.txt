@@ -1,0 +1,20 @@
+# ── Profilo FULL (locale) ──────────────────────────────────────────────────
+# Aggiunge al profilo lite le dipendenze pesanti (~2GB): detection YOLO,
+# overlay MediaPipe e reattività audio. Non usarlo sul free tier di Render.
+#
+#     pip install -r requirements-local.txt
+#
+# Per il mux audio nel video serve anche ffmpeg nel PATH (brew install ffmpeg).
+
+-r requirements.txt
+
+# Detection YOLO (porta con sé torch)
+ultralytics==8.4.66
+torch==2.12.0
+torchvision==0.27.0
+
+# Overlay pose/mani/volto
+mediapipe==0.10.35
+
+# Analisi audio (beat detection, RMS)
+librosa==0.11.0

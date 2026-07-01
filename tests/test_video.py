@@ -5,7 +5,10 @@ import tempfile
 
 import cv2
 import numpy as np
+import pytest
 from conftest import register_and_login
+
+from engine import capabilities
 
 # Config completo VideoForm (config base + campi temporali), detection color = veloce
 VBASE = dict(
@@ -78,6 +81,31 @@ def test_video_requires_file(client):
     assert b"Carica un video" in r.data
 
 
+def test_video_limits_cap_resolution_and_duration(client, app):
+    """Con i limiti di produzione attivi l'output è ridotto in risoluzione e durata."""
+    import re
+
+    register_and_login(client, "vidlim")
+    app.config["VIDEO_MAX_SECONDS"] = 1   # sorgente: 18 frame a 12 fps
+    app.config["VIDEO_MAX_DIM"] = 160     # sorgente: 320x240
+    try:
+        data = dict(VBASE)
+        data["video"] = (io.BytesIO(_tiny_mp4_bytes()), "clip.mp4")
+        r = client.post("/video", data=data, content_type="multipart/form-data")
+        assert r.status_code == 200 and b"Video elaborato" in r.data
+
+        match = re.search(rb"uploads/([0-9a-f]+\.mp4)", r.data)
+        assert match, "nome del video di output non trovato nella pagina"
+        out = os.path.join(app.static_folder, "uploads", match.group(1).decode())
+        cap = cv2.VideoCapture(out)
+        assert int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) == 160
+        assert int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) == 120
+        assert 0 < int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) <= 12  # 1s a 12 fps
+    finally:
+        app.config["VIDEO_MAX_SECONDS"] = 0
+        app.config["VIDEO_MAX_DIM"] = 0
+
+
 def _tiny_wav_bytes():
     """Mezzo secondo di sinusoide pulsata (genera onset rilevabili)."""
     import math
@@ -96,6 +124,7 @@ def _tiny_wav_bytes():
     return buf.getvalue()
 
 
+@pytest.mark.skipif(not capabilities()["audio"], reason="richiede librosa (profilo full)")
 def test_video_audio_reactivity_produces_output(client, app):
     """Con una traccia audio caricata l'elaborazione va a buon fine (beat + mux)."""
     register_and_login(client, "vidaudio")

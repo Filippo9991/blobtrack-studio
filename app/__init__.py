@@ -39,6 +39,8 @@ def create_app(config_name=None):
     # --- variabili globali disponibili in tutti i template ---
     @app.context_processor
     def inject_globals():
+        from engine import capabilities
+
         from app.models import User
 
         uid = session.get("user_id")
@@ -49,7 +51,12 @@ def create_app(config_name=None):
         if user and user.cookie_consent:
             consent_given = True
 
-        return {"current_user": user, "show_cookie_banner": not consent_given}
+        return {
+            "current_user": user,
+            "show_cookie_banner": not consent_given,
+            # Profilo lite vs full: i template nascondono ciò che non è installato
+            "caps": capabilities(),
+        }
 
     # --- Pagine di errore custom ---
     @app.errorhandler(404)

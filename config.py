@@ -29,6 +29,12 @@ class Config:
     # Limite dimensione upload: 64 MB (immagini piccole, video brevi)
     MAX_CONTENT_LENGTH = 64 * 1024 * 1024
 
+    # Limiti dell'elaborazione video (0 = nessun limite, profilo locale).
+    # In produzione (free tier: 0.1 CPU) vengono attivati per mantenere
+    # i tempi di risposta accettabili.
+    VIDEO_MAX_SECONDS = int(os.environ.get("VIDEO_MAX_SECONDS", "0"))
+    VIDEO_MAX_DIM = int(os.environ.get("VIDEO_MAX_DIM", "0"))
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
@@ -36,6 +42,12 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
+
+    # Server piccolo (Render free): upload più contenuti e video limitati
+    # (durata/risoluzione ridotte prima dell'elaborazione). Override via env.
+    MAX_CONTENT_LENGTH = 32 * 1024 * 1024
+    VIDEO_MAX_SECONDS = int(os.environ.get("VIDEO_MAX_SECONDS", "15"))
+    VIDEO_MAX_DIM = int(os.environ.get("VIDEO_MAX_DIM", "480"))
 
     # Render/Heroku usano DATABASE_URL e il formato postgres:// che SQLAlchemy
     # non accetta più: va convertito in postgresql://.

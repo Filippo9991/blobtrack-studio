@@ -1,0 +1,31 @@
+# Deploy "one-click" su Render (Blueprint):
+#   Dashboard → New → Blueprint → collega questo repository → Apply.
+# Crea il web service (free) + il database PostgreSQL (free) già collegati.
+# L'unica variabile da inserire a mano è GROQ_API_KEY (sync: false).
+#
+# Il profilo installato è quello LITE (requirements.txt): la UI nasconde da sola
+# YOLO/MediaPipe/audio, e l'elaborazione video è limitata (VIDEO_MAX_*).
+
+services:
+  - type: web
+    name: blobtrack-studio
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --workers 1 --threads 4 --timeout 300
+    healthCheckPath: /
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: blobtrack-db
+          property: connectionString
+      - key: GROQ_API_KEY
+        sync: false
+
+databases:
+  - name: blobtrack-db
+    plan: free

@@ -91,10 +91,15 @@
 
 <div class="sb-section">
   <h3 class="section-title">MediaPipe</h3>
+  {% if caps.mediapipe %}
   <div class="grid-3">{{ c.chk(form.mp_pose_enabled) }}{{ c.chk(form.mp_hands_enabled) }}{{ c.chk(form.mp_face_enabled) }}</div>
   {{ c.rng(form.mp_confidence, 0.1, 1.0, 0.05) }}
   <div class="grid-2">{{ c.rng(form.mp_num_poses, 1, 6) }}{{ c.rng(form.mp_pose_num_points, 1, 33) }}</div>
   <div class="grid-2">{{ c.rng(form.mp_hands_num_points, 1, 21) }}{{ c.rng(form.mp_num_faces, 1, 4) }}</div>
   <div class="grid-2">{{ c.rng(form.mp_face_num_points, 1, 15) }}{{ c.rng(form.mp_blob_size, 0.5, 3.0, 0.1) }}</div>
   {{ c.rng(form.mp_merge_distance, 0, 200) }}
+  {% else %}
+  <p class="form-hint">Overlay pose/mani/volto disponibile nella versione locale
+    (profilo full: <code>pip install -r requirements-local.txt</code>).</p>
+  {% endif %}
 </div>
