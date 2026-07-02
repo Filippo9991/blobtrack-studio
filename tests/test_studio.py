@@ -5,7 +5,9 @@ from conftest import register_and_login
 
 from app.models import Creation, Preset
 
-# Set completo di campi della StudioForm (valori validi, detection color = veloce)
+# Set completo di campi della StudioForm unificata (valori validi, color = veloce).
+# Include anche i campi Motion/Audio (validi per il video): il form li richiede
+# sempre, la UI li mostra solo quando è caricato un video.
 BASE = dict(
     detection_engine="color", yolo_model_file="yolov8n.pt", track_mode="luminance",
     threshold="120", threshold_mode="adaptive", color_target_hex="#ff0000",
@@ -23,6 +25,11 @@ BASE = dict(
     glow_intensity="1.0", glow_radius="21",
     mp_confidence="0.5", mp_num_poses="4", mp_pose_num_points="6", mp_hands_num_points="5",
     mp_num_faces="2", mp_face_num_points="7", mp_blob_size="1.0", mp_merge_distance="0",
+    # Motion (video)
+    frame_skip="1", smoothing="5", persistence="30", tracker_match_radius="150",
+    trail_length="10", trail_opacity="0.6", trail_style="fade",
+    # Audio (video)
+    audio_band="bass", audio_sensitivity="1.0", audio_offset="0.0", audio_mod_intensity="1.0",
 )
 
 
@@ -31,7 +38,7 @@ def _post_studio(client, png, action, **extra):
     data["action"] = action
     data.update(extra)
     if png is not None:
-        data["image"] = (io.BytesIO(png), "test.png")
+        data["source"] = (io.BytesIO(png), "test.png")
     return client.post(
         "/studio", data=data, content_type="multipart/form-data", follow_redirects=True
     )

@@ -20,7 +20,7 @@ from engine import capabilities
 
 from app.decorators import login_required
 from app.extensions import db
-from app.forms import DeleteForm, LiveForm, StudioForm, VideoForm
+from app.forms import DeleteForm, LiveForm, StudioForm
 from app.models import Creation, Preset
 from app.services.frame_engine import (
     render_frame_jpeg,
@@ -37,10 +37,21 @@ from app.services.video_processing import (
 
 studio_bp = Blueprint("studio", __name__)
 
-# Campi dei form (Studio/Video) che NON fanno parte del config del motore.
+# Campi del form che NON fanno parte del config del motore.
 # I campi-config sono quindi "tutti gli altri": il form è l'unica fonte di verità
 # (aggiungere un parametro al form lo include automaticamente nel config).
-_NON_CONFIG_FIELDS = {"csrf_token", "image", "video", "audio", "preset_name", "submit"}
+_NON_CONFIG_FIELDS = {
+    "csrf_token", "source", "image", "video", "audio",
+    "snapshot_raw", "preset_name", "submit",
+}
+
+IMAGE_EXTS = {"jpg", "jpeg", "png", "webp", "bmp"}
+VIDEO_EXTS = {"mp4", "mov", "avi", "webm", "mkv"}
+
+
+def _is_video_upload(file_storage):
+    name = getattr(file_storage, "filename", "") or ""
+    return "." in name and name.rsplit(".", 1)[1].lower() in VIDEO_EXTS
 
 
 def _form_to_settings(form):
@@ -68,62 +79,134 @@ def studio():
             preset = Preset.query.filter_by(id=preset_id, user_id=session["user_id"]).first()
             if preset:
                 _apply_settings_to_form(form, json.loads(preset.config))
-                flash(f"Preset «{preset.name}» caricato. Carica un'immagine ed elabora.", "success")
+                flash(f"Preset «{preset.name}» caricato. Carica una sorgente ed elabora.", "success")
             else:
                 flash("Preset non trovato.", "error")
-        return render_template("studio.html", form=form, preview=None)
+
+        # Risultato di un job video asincrono concluso (il JS reindirizza qui)
+        job_id = request.args.get("job")
+        if job_id:
+            job = get_job(job_id, session["user_id"])
+            if job and job["state"] == "done":
+                return render_template("studio.html", form=form, preview=None, result=job["result"])
+            flash("Elaborazione non trovata o non ancora conclusa.", "warning")
+        return render_template("studio.html", form=form, preview=None, result=None)
+
+    # Il JS invia con questo header (per risposte JSON); i POST classici sono il
+    # fallback senza JavaScript.
+    is_fetch = request.headers.get("X-Requested-With") == "fetch"
 
     if not form.validate_on_submit():
-        return render_template("studio.html", form=form, preview=None)
+        if is_fetch:
+            msgs = [e for errs in form.errors.values() for e in errs]
+            return {"error": " ".join(msgs) or "Dati non validi."}, 400
+        return render_template("studio.html", form=form, preview=None, result=None)
 
     action = request.form.get("action", "preview")
     settings = _form_to_settings(form)
 
-    # Salvataggio preset: non richiede un'immagine
+    # 1) Salvataggio preset: non serve una sorgente
     if action == "save_preset":
         name = (form.preset_name.data or "").strip()
         if not name:
-            flash("Dai un nome al preset per salvarlo.", "warning")
-            return render_template("studio.html", form=form, preview=None)
+            msg = "Dai un nome al preset per salvarlo."
+            if is_fetch:
+                return {"error": msg}, 400
+            flash(msg, "warning")
+            return render_template("studio.html", form=form, preview=None, result=None)
         preset = Preset(
             user_id=session["user_id"], name=name,
             config=json.dumps(settings), source="manual",
         )
         db.session.add(preset)
         db.session.commit()
+        if is_fetch:
+            return {"ok": True, "redirect": url_for("studio.presets")}
         flash(f"Preset «{name}» salvato.", "success")
         return redirect(url_for("studio.presets"))
 
-    # preview / save: serve un'immagine
-    file = form.image.data
-    if not file or not getattr(file, "filename", ""):
-        flash("Carica un'immagine per elaborarla.", "warning")
-        return render_template("studio.html", form=form, preview=None)
+    # 2) Render VIDEO: serve una sorgente video; elaborazione completa (asincrona)
+    if action == "render_video":
+        src = form.source.data
+        if not _is_video_upload(src):
+            msg = "Carica un video per l'elaborazione."
+            if is_fetch:
+                return {"error": msg}, 400
+            flash(msg, "warning")
+            return render_template("studio.html", form=form, preview=None, result=None)
+
+        audio_file = form.audio.data
+        if audio_file and not capabilities()["audio"]:
+            audio_file = None  # profilo lite: la UI nasconde il campo, ma un POST può arrivare
+            flash("Reattività audio non disponibile su questo server: elaboro senza traccia.", "warning")
+
+        if is_fetch:
+            try:
+                job_id = start_video_job(src, settings, audio_file, session["user_id"])
+            except VideoBusyError as exc:
+                return {"error": str(exc)}, 429
+            except Exception:
+                current_app.logger.exception("Avvio job video fallito")
+                return {"error": "Avvio dell'elaborazione fallito."}, 500
+            return {"job": job_id}
+
+        try:  # fallback sincrono senza JS
+            result = process_video(src, settings, audio_file)
+        except VideoBusyError as exc:
+            flash(str(exc), "warning")
+            return render_template("studio.html", form=form, preview=None, result=None)
+        except Exception as exc:
+            current_app.logger.exception("Errore di elaborazione video")
+            flash(f"Elaborazione video fallita: {exc}", "error")
+            return render_template("studio.html", form=form, preview=None, result=None)
+        flash("Video elaborato.", "success")
+        return render_template("studio.html", form=form, preview=None, result=result)
+
+    # 3) IMMAGINE — save/preview. I pixel arrivano dal frame catturato dal client
+    #    (snapshot_raw: immagine o fotogramma di un video) o dal file immagine.
+    raw = _decode_data_url(form.snapshot_raw.data)
+    src = form.source.data
+    if raw is None and src and getattr(src, "filename", "") and not _is_video_upload(src):
+        raw = src.read()
+    if raw is None:
+        msg = "Carica un'immagine, o un video da cui salvare un fotogramma."
+        if is_fetch:
+            return {"error": msg}, 400
+        flash(msg, "warning")
+        return render_template("studio.html", form=form, preview=None, result=None)
 
     try:
-        png_bytes = render_image(file.read(), settings)
+        png_bytes = render_image(raw, settings)
     except ValueError as exc:
+        if is_fetch:
+            return {"error": str(exc)}, 400
         flash(str(exc), "error")
-        return render_template("studio.html", form=form, preview=None)
+        return render_template("studio.html", form=form, preview=None, result=None)
     except Exception as exc:  # YOLO/MediaPipe possono fallire: non esporre lo stacktrace
         current_app.logger.exception("Errore di elaborazione")
+        if is_fetch:
+            return {"error": "Elaborazione fallita."}, 500
         flash(f"Elaborazione fallita: {exc}", "error")
-        return render_template("studio.html", form=form, preview=None)
+        return render_template("studio.html", form=form, preview=None, result=None)
 
     if action == "save":
-        title = (form.preset_name.data or file.filename or "Creazione").strip()[:120]
+        default_title = getattr(src, "filename", "") or "Creazione"
+        title = (form.preset_name.data or default_title).strip()[:120]
         creation = Creation(
             user_id=session["user_id"], title=title,
             image_data=png_bytes, settings=json.dumps(settings),
         )
         db.session.add(creation)
         db.session.commit()
+        if is_fetch:
+            return {"ok": True, "redirect": url_for("studio.dashboard")}
         flash("Creazione salvata nella galleria.", "success")
         return redirect(url_for("studio.dashboard"))
 
+    # preview (fallback no-JS per le immagini: con JS l'anteprima è live nel browser)
     preview = "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii")
     flash("Anteprima generata.", "success")
-    return render_template("studio.html", form=form, preview=preview)
+    return render_template("studio.html", form=form, preview=preview, result=None)
 
 
 @studio_bp.route("/dashboard")
@@ -184,71 +267,13 @@ def delete_preset(preset_id):
     return redirect(url_for("studio.presets"))
 
 
-@studio_bp.route("/video", methods=["GET", "POST"])
+@studio_bp.route("/video")
 @login_required
 def video():
-    form = VideoForm()
-
-    if request.method == "GET":
-        preset_id = request.args.get("preset", type=int)
-        if preset_id:
-            preset = Preset.query.filter_by(id=preset_id, user_id=session["user_id"]).first()
-            if preset:
-                _apply_settings_to_form(form, json.loads(preset.config))
-                flash(f"Preset «{preset.name}» caricato.", "success")
-
-        # Risultato di un job asincrono concluso (il JS reindirizza qui)
-        job_id = request.args.get("job")
-        if job_id:
-            job = get_job(job_id, session["user_id"])
-            if job and job["state"] == "done":
-                return render_template("video.html", form=form, result=job["result"])
-            flash("Elaborazione non trovata o non ancora conclusa.", "warning")
-        return render_template("video.html", form=form, result=None)
-
-    # Il percorso normale è ASINCRONO (il JS invia con questo header e fa
-    # polling su /video/status); il POST classico resta come fallback no-JS.
-    is_fetch = request.headers.get("X-Requested-With") == "fetch"
-
-    if not form.validate_on_submit():
-        if is_fetch:
-            msgs = [e for errs in form.errors.values() for e in errs]
-            return {"error": " ".join(msgs) or "Dati non validi."}, 400
-        return render_template("video.html", form=form, result=None)
-
-    settings = _form_to_settings(form)
-    audio_file = form.audio.data
-    if audio_file and not capabilities()["audio"]:
-        # Profilo lite (la UI nasconde il campo, ma un POST può arrivare comunque)
-        audio_file = None
-        flash(
-            "Reattività audio non disponibile su questo server: "
-            "il video è stato elaborato senza traccia.",
-            "warning",
-        )
-
-    if is_fetch:
-        try:
-            job_id = start_video_job(form.video.data, settings, audio_file, session["user_id"])
-        except VideoBusyError as exc:
-            return {"error": str(exc)}, 429
-        except Exception:
-            current_app.logger.exception("Avvio job video fallito")
-            return {"error": "Avvio dell'elaborazione fallito."}, 500
-        return {"job": job_id}
-
-    try:
-        result = process_video(form.video.data, settings, audio_file)
-    except VideoBusyError as exc:  # slot occupati: non è un errore del video
-        flash(str(exc), "warning")
-        return render_template("video.html", form=form, result=None)
-    except Exception as exc:  # codec/IO/engine: non esporre lo stacktrace
-        current_app.logger.exception("Errore di elaborazione video")
-        flash(f"Elaborazione video fallita: {exc}", "error")
-        return render_template("video.html", form=form, result=None)
-
-    flash("Video elaborato.", "success")
-    return render_template("video.html", form=form, result=result)
+    """Compat: la sezione Video è stata fusa nello Studio unico (immagine+video)."""
+    preset = request.args.get("preset")
+    job = request.args.get("job")
+    return redirect(url_for("studio.studio", preset=preset, job=job))
 
 
 @studio_bp.route("/video/status/<job_id>")
@@ -260,7 +285,7 @@ def video_status(job_id):
         return {"error": "Elaborazione non trovata."}, 404
     payload = {"state": job["state"], "progress": round(job["progress"], 3)}
     if job["state"] == "done":
-        payload["redirect"] = url_for("studio.video", job=job_id)
+        payload["redirect"] = url_for("studio.studio", job=job_id)
     elif job["state"] == "error":
         payload["error"] = job["error"]
     return payload

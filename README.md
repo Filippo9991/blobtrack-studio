@@ -22,8 +22,7 @@ Progetto d'esame: applicazione web completa con **Python + Flask**.
 
 ## ✨ Funzionalità
 
-- 🖼️ **Studio immagine** — upload → blob detection (color engine o YOLO) + styling completo: forme, wireframe, colormap interne, glow, etichette, ~60 parametri regolabili
-- 🎬 **Video processing** — anteprima immediata del sorgente e **anteprima del frame stilizzato** prima del render; elaborazione **asincrona con barra di avanzamento** (progress dal motore) → player + download MP4 (H.264)
+- 🎨 **Studio unico (immagine + video)** — una sola sezione: carichi un'immagine o un video e l'**anteprima già elaborata** da blobtrack compare subito e si aggiorna **da sola** (mentre il video scorre, allo scrub, a ogni modifica dei parametri). Immagine → salvi la creazione; video → **elaborazione asincrona con barra di avanzamento** (progress dal motore) e download MP4 (H.264). Detection color o YOLO, ~60 parametri: forme, wireframe, colormap, glow, etichette
 - 🎵 **Audio reactivity** — aggiungi una traccia audio al video: beat detection e analisi RMS (librosa) modulano dimensioni, spessori e glow a tempo di musica; l'audio viene muxato nel file finale (ffmpeg)
 - 📹 **Live cam** — la webcam del browser invia i frame al server via **WebSocket** (fallback HTTP automatico) e li riceve elaborati in near-real-time; scie e tracking **persistenti per stream** e **reattività al microfono** (WebAudio); snapshot salvabili in galleria
 - 🗂️ **Galleria personale** — le creazioni salvate come record sul database, scaricabili
@@ -153,7 +152,7 @@ app/                   APPLICAZIONE WEB (Flask)
   models.py            User, Creation, Preset
   forms.py             form Flask-WTF (config condivisa da Studio/Video/Live)
   decorators.py        @login_required
-  blueprints/          main, auth, studio (immagine/video/live), live_ws (WebSocket), assistant
+  blueprints/          main, auth, studio (immagine+video unificati, live), live_ws (WebSocket), assistant
   services/            frame_engine (immagine/live), video_processing, ai_presets (Groq)
   templates/           Jinja2 (base + pagine + macro condivise, stile "acid")
   static/              CSS (design system), JS (live cam, campi condizionali)

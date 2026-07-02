@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_controls.html" as c %}
 {% block title %}Studio — BlobTrack{% endblock %}
 
 {% block content %}
@@ -8,24 +9,78 @@
 
     <form method="post" enctype="multipart/form-data" novalidate id="studio-form">
       {{ form.hidden_tag() }}
+      {# Frame grezzo catturato dal client per salvare un fotogramma dell'anteprima #}
+      {{ form.snapshot_raw() }}
 
       <div class="sb-section">
-        <label class="upload-btn" for="{{ form.image.id }}"><span class="fname">Carica immagine</span></label>
-        <div style="position:absolute; left:-9999px;">{{ form.image() }}</div>
-        {% for e in form.image.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        <label class="upload-btn" for="{{ form.source.id }}"><span class="fname">Carica immagine o video</span></label>
+        <div style="position:absolute; left:-9999px;">{{ form.source() }}</div>
+        {% for e in form.source.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        <p class="form-hint" style="margin-top:6px;">Immagine → creazione statica · Video → elaborazione con tracker e scie.</p>
+      </div>
+
+      {# --- Sezioni valide solo per i video: la UI le mostra quando serve --- #}
+      <div class="sb-section video-only" hidden>
+        <h3 class="section-title">Motion</h3>
+        {{ c.rng(form.frame_skip, 1, 10) }}
+        {{ c.rng(form.smoothing, 0, 60) }}
+        {{ c.rng(form.persistence, 0, 100) }}
+        {{ c.chk(form.persistence_fade) }}
+        {{ c.rng(form.tracker_match_radius, 50, 500) }}
+        {{ c.chk(form.trails_enabled) }}
+        <div data-show-when-checked="trails_enabled">
+          {{ c.rng(form.trail_length, 5, 60) }}
+          {{ c.rng(form.trail_opacity, 0.1, 1.0, 0.05) }}
+          {{ c.sel(form.trail_style) }}
+        </div>
+      </div>
+
+      <div class="sb-section video-only" hidden>
+        <h3 class="section-title">Audio</h3>
+        {% if caps.audio %}
+        <label class="upload-btn" for="{{ form.audio.id }}"><span class="fname">Carica traccia audio</span></label>
+        <div style="position:absolute; left:-9999px;">{{ form.audio() }}</div>
+        {% for e in form.audio.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
+        <p class="form-hint" style="margin-top:6px;">Con una traccia i blob nascono sui beat; viene anche unita al video.</p>
+        <div data-show-when-file="audio">
+          {{ c.sel(form.audio_band) }}
+          {{ c.rng(form.audio_sensitivity, 0.1, 3.0, 0.1) }}
+          {{ c.rng(form.audio_offset, 0.0, 60.0, 0.5) }}
+          <div class="grid-3">{{ c.chk(form.audio_modulate_size) }}{{ c.chk(form.audio_modulate_thickness) }}{{ c.chk(form.audio_modulate_glow) }}</div>
+          {{ c.rng(form.audio_mod_intensity, 0.0, 2.0, 0.1) }}
+        </div>
+        {% else %}
+        <p class="form-hint">Reattività audio disponibile nella versione locale
+          (profilo full: <code>pip install -r requirements-local.txt</code>).</p>
+        {% endif %}
       </div>
 
       {% include "_config_sections.html" %}
 
       <div class="sb-section">
-        <h3 class="section-title">Salva</h3>
+        <h3 class="section-title">Salva ed esporta</h3>
         <div class="field">
           <label class="input-label">{{ form.preset_name.label.text }}</label>
           {{ form.preset_name(placeholder="Nome creazione o preset") }}
         </div>
-        <button type="submit" name="action" value="preview" class="btn btn-block" style="margin-bottom:8px;">Anteprima</button>
+
+        {# Anteprima server-side: solo fallback senza JS (con JS è live nel pannello) #}
+        <button type="submit" name="action" value="preview" id="btn-preview-nojs"
+                class="btn btn-block" style="margin-bottom:8px;">Anteprima</button>
+
+        {# Video: elaborazione completa + download (mostrato dal JS quando c'è un video) #}
+        <button type="submit" name="action" value="render_video" id="btn-render"
+                class="btn btn-block" style="margin-bottom:8px;" hidden>Elabora e scarica video</button>
+
+        {% if config.VIDEO_MAX_SECONDS or config.VIDEO_MAX_DIM %}
+        <p class="form-hint video-only" hidden style="margin-bottom:8px;">Demo: elaborazione limitata a
+          {% if config.VIDEO_MAX_SECONDS %}{{ config.VIDEO_MAX_SECONDS }}s{% endif %}
+          {% if config.VIDEO_MAX_SECONDS and config.VIDEO_MAX_DIM %}·{% endif %}
+          {% if config.VIDEO_MAX_DIM %}{{ config.VIDEO_MAX_DIM }}px{% endif %}. In locale nessun limite.</p>
+        {% endif %}
+
         <div class="grid-2">
-          <button type="submit" name="action" value="save" class="btn btn-ghost btn-sm">Salva creazione</button>
+          <button type="submit" name="action" value="save" id="btn-save" class="btn btn-ghost btn-sm">Salva creazione</button>
           <button type="submit" name="action" value="save_preset" class="btn btn-ghost btn-sm">Salva preset</button>
         </div>
       </div>
@@ -33,7 +88,19 @@
   </aside>
 
   <section class="studio-preview">
-    {% if preview %}
+    {% if result %}
+      {# Risultato del render video #}
+      <div id="result-box" style="text-align:center;">
+        <video controls autoplay loop style="max-width:100%; max-height:70vh; border:1px solid var(--line);">
+          <source src="{{ url_for('studio.upload_file', filename=result) }}" type="video/mp4" />
+        </video>
+        <div style="margin-top: var(--space-md);">
+          <a href="{{ url_for('studio.upload_file', filename=result, download=1) }}" class="btn">Scarica video</a>
+          <a href="{{ url_for('studio.studio') }}" class="btn btn-ghost">Nuova elaborazione</a>
+        </div>
+      </div>
+    {% elif preview %}
+      {# Anteprima immagine senza JS #}
       <div style="text-align:center;">
         <img src="{{ preview }}" alt="Anteprima elaborata" />
         <div style="margin-top: var(--space-md);">
@@ -41,8 +108,38 @@
         </div>
       </div>
     {% else %}
-      <div class="placeholder">Carica un'immagine · regola i parametri · premi Anteprima</div>
+      <div id="studio-stage" style="width:100%; text-align:center;">
+        <div class="placeholder" id="studio-placeholder">Carica un'immagine o un video · l'anteprima elaborata compare qui e si aggiorna da sola</div>
+
+        {# Anteprima ELABORATA (l'unica mostrata): frame processato da blobtrack #}
+        <img id="live-preview" alt="Anteprima elaborata"
+             style="max-width:100%; max-height:60vh; border:1px solid var(--line);" hidden />
+
+        {# Controlli video propri (nessun player grezzo): pilotano l'anteprima #}
+        <div id="video-controls" hidden style="margin-top: var(--space-md); display:flex; gap:var(--space-sm); align-items:center; justify-content:center;">
+          <button type="button" class="btn btn-sm" id="pp-btn">▶︎</button>
+          <input type="range" id="timeline" min="0" max="1000" value="0" style="flex:1; max-width:420px;" />
+          <span class="form-hint" id="time-label" style="min-width:88px; text-align:right;">0:00 / 0:00</span>
+        </div>
+
+        <div id="job-progress" hidden style="margin-top: var(--space-lg);">
+          <div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
+          <p class="form-hint" style="margin-top:6px;">
+            <span id="progress-label">0%</span> — elaborazione in corso, resta su questa pagina…
+          </p>
+        </div>
+
+        <div id="job-error" class="form-error" hidden style="margin-top: var(--space-md);"></div>
+      </div>
+
+      {# Sorgenti nascoste: da qui il JS cattura i frame da elaborare #}
+      <video id="src-media" playsinline muted style="display:none;"></video>
+      <img id="src-image" alt="" style="display:none;" />
     {% endif %}
   </section>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/studio.js') }}"></script>
 {% endblock %}

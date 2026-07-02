@@ -7,7 +7,7 @@ I parametri di stile del motore vivono in `_ConfigFieldsForm`, condivisa da Stud
 (immagine) e Video: così i preset sono interscambiabili fra i due.
 """
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileAllowed, FileField, FileRequired
+from flask_wtf.file import FileAllowed, FileField
 from wtforms import (
     BooleanField,
     FloatField,
@@ -154,20 +154,8 @@ class _ConfigFieldsForm(FlaskForm):
     mp_merge_distance = IntegerField("Fusione (px)", validators=[NumberRange(0, 200)], default=0)
 
 
-class StudioForm(_ConfigFieldsForm):
-    image = FileField(
-        "Sorgente",
-        validators=[
-            Optional(),
-            FileAllowed(["jpg", "jpeg", "png", "webp", "bmp"], "Solo immagini (jpg, png, webp, bmp)."),
-        ],
-    )
-    preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
-    submit = SubmitField("Elabora")
-
-
 class _MotionFields:
-    """Tracking fra frame + scie: condivisi da Video e Live (mixin WTForms)."""
+    """Tracking fra frame + scie: condivisi da Studio (video) e Live (mixin WTForms)."""
     smoothing = IntegerField("Smoothing", validators=[NumberRange(0, 60)], default=5)
     persistence = IntegerField("Persistenza", validators=[NumberRange(0, 100)], default=30)
     persistence_fade = BooleanField("Fade persistenza")
@@ -186,29 +174,28 @@ class _AudioModFields:
     audio_mod_intensity = FloatField("Intensità modulazione", validators=[NumberRange(0.0, 2.0)], default=1.0)
 
 
-class LiveForm(_ConfigFieldsForm, _MotionFields, _AudioModFields):
-    """Live cam: parametri di stile + motion (i frame arrivano dalla webcam).
+class StudioForm(_ConfigFieldsForm, _MotionFields, _AudioModFields):
+    """Studio unificato: una sorgente che può essere IMMAGINE o VIDEO.
 
-    Lo stato di tracking è per-sessione di stream (frame_engine): scie e ID
-    stabili si accumulano fra i frame. La modulazione audio usa il livello del
-    microfono calcolato nel browser. `preset_name` per salvare preset/snapshot.
+    Con un'immagine si genera/salva una creazione; con un video si avvia
+    l'elaborazione completa (tracker, scie, audio) e si scarica l'MP4. I campi
+    Motion/Audio hanno senso solo sul video ma restano nel form (default validi):
+    la UI li mostra solo quando è caricato un video.
     """
-    preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
-    submit = SubmitField("Salva")
-
-
-class VideoForm(_ConfigFieldsForm, _MotionFields, _AudioModFields):
-    video = FileField(
-        "Sorgente video",
+    source = FileField(
+        "Sorgente",
         validators=[
-            FileRequired("Carica un video."),
-            FileAllowed(["mp4", "mov", "avi", "webm", "mkv"], "Solo video (mp4, mov, avi, webm, mkv)."),
+            Optional(),
+            FileAllowed(
+                ["jpg", "jpeg", "png", "webp", "bmp", "mp4", "mov", "avi", "webm", "mkv"],
+                "Solo immagini (jpg, png, webp, bmp) o video (mp4, mov, avi, webm, mkv).",
+            ),
         ],
     )
-    # Parametri temporali che hanno senso solo sul file video
+    # Parametro temporale che ha senso solo sul file video
     frame_skip = IntegerField("Frame skip", validators=[NumberRange(1, 10)], default=1)
-    # Audio reactivity — la reattività si attiva caricando una traccia (audio_enabled
-    # e audio_path li imposta il service in base al file). Questi sono i parametri.
+    # Reattività audio (solo video): si attiva caricando una traccia; audio_enabled
+    # e audio_path li imposta il service in base al file.
     audio = FileField(
         "Traccia audio",
         validators=[
@@ -219,8 +206,22 @@ class VideoForm(_ConfigFieldsForm, _MotionFields, _AudioModFields):
     audio_band = SelectField("Banda", choices=opt.choices(opt.AUDIO_BANDS), default="bass")
     audio_sensitivity = FloatField("Sensibilità beat", validators=[NumberRange(0.1, 3.0)], default=1.0)
     audio_offset = FloatField("Offset (s)", validators=[NumberRange(0.0, 60.0)], default=0.0)
+    # Frame grezzo (data URL) catturato dal client per salvare un fotogramma
+    # dell'anteprima (immagine o frame di un video) come creazione.
+    snapshot_raw = HiddenField()
     preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
-    submit = SubmitField("Elabora video")
+    submit = SubmitField("Elabora")
+
+
+class LiveForm(_ConfigFieldsForm, _MotionFields, _AudioModFields):
+    """Live cam: parametri di stile + motion (i frame arrivano dalla webcam).
+
+    Lo stato di tracking è per-sessione di stream (frame_engine): scie e ID
+    stabili si accumulano fra i frame. La modulazione audio usa il livello del
+    microfono calcolato nel browser. `preset_name` per salvare preset/snapshot.
+    """
+    preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
+    submit = SubmitField("Salva")
 
 
 # --- AI Preset Generator ---------------------------------------------------
