@@ -2109,10 +2109,15 @@ class LiveEngine:
             rgb = cv2.cvtColor(frame_clean, cv2.COLOR_BGR2RGB)
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
 
-        segmenter = self._mp_state.get('segmenter') if c.detection_engine == 'silhouette' else None
-        detection_blobs = detect_blobs(frame_ai, c, c.blob_shape,
-                                       yolo_model=yolo_model, persist_tracking=True,
-                                       segmenter=segmenter, mp_image=mp_image)
+        # Modalità 'mediapipe': nessuna detection di base (color/yolo/silhouette),
+        # così i blob pose/mani/volto non si sovrappongono ai blob luminosi.
+        if c.detection_engine == 'mediapipe':
+            detection_blobs = []
+        else:
+            segmenter = self._mp_state.get('segmenter') if c.detection_engine == 'silhouette' else None
+            detection_blobs = detect_blobs(frame_ai, c, c.blob_shape,
+                                           yolo_model=yolo_model, persist_tracking=True,
+                                           segmenter=segmenter, mp_image=mp_image)
 
         # 3. MediaPipe blobs
         mp_blobs = []

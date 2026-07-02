@@ -16,7 +16,8 @@ def test_consent_banner_flow(client):
     assert b"cookie-banner" not in client.get("/").data
 
 
-def test_missing_api_key_flashes_config_error(client):
+def test_missing_api_key_flashes_config_error(client, app):
+    app.config["GROQ_API_KEY"] = ""  # deterministico: ignora un'eventuale chiave in .env
     register_and_login(client, "aiuser")
     r = client.post("/assistant", data={"prompt": "neon look"}, follow_redirects=True)
     assert "non è configurato".encode() in r.data

@@ -20,7 +20,7 @@ from engine import capabilities
 
 from app.decorators import login_required
 from app.extensions import db
-from app.forms import DeleteForm, LiveForm, StudioForm
+from app.forms import DeleteForm, LiveForm, MediaPipeForm, StudioForm
 from app.models import Creation, Preset
 from app.services.frame_engine import (
     render_frame_jpeg,
@@ -318,27 +318,27 @@ def _decode_data_url(data_url):
         return None
 
 
-@studio_bp.route("/live", methods=["GET", "POST"])
-@login_required
-def live():
-    """Live cam: la webcam la fornisce il browser; qui si gestiscono solo i
-    parametri di stile e il salvataggio di preset/snapshot. I frame elaborati
-    in tempo (quasi) reale passano dall'endpoint AJAX /live/frame."""
-    form = LiveForm()
+def _load_preset_into(form, snippet):
+    """GET delle pagine webcam: precarica un preset se richiesto in querystring."""
+    preset_id = request.args.get("preset", type=int)
+    if not preset_id:
+        return
+    preset = Preset.query.filter_by(id=preset_id, user_id=session["user_id"]).first()
+    if preset:
+        _apply_settings_to_form(form, json.loads(preset.config))
+        flash(f"Preset «{preset.name}» caricato. {snippet}", "success")
+    else:
+        flash("Preset non trovato.", "error")
 
-    if request.method == "GET":
-        preset_id = request.args.get("preset", type=int)
-        if preset_id:
-            preset = Preset.query.filter_by(id=preset_id, user_id=session["user_id"]).first()
-            if preset:
-                _apply_settings_to_form(form, json.loads(preset.config))
-                flash(f"Preset «{preset.name}» caricato. Avvia la camera.", "success")
-            else:
-                flash("Preset non trovato.", "error")
-        return render_template("live.html", form=form)
 
+def _handle_webcam_save(form, template):
+    """POST condiviso da /live e /mediapipe: salva snapshot (in galleria) o preset.
+
+    I frame elaborati passano da /live/frame; qui si gestisce solo il salvataggio
+    (form classico con CSRF). Lo snapshot rielabora server-side il frame grezzo.
+    """
     if not form.validate_on_submit():
-        return render_template("live.html", form=form)
+        return render_template(template, form=form)
 
     action = request.form.get("action", "save_preset")
     settings = _form_to_settings(form)
@@ -347,14 +347,14 @@ def live():
         raw = _decode_data_url(request.form.get("snapshot_raw"))
         if not raw:
             flash("Nessun frame da salvare: avvia la camera e riprova.", "warning")
-            return render_template("live.html", form=form)
+            return render_template(template, form=form)
         try:
             png_bytes = render_image(raw, settings)
         except Exception as exc:  # YOLO/MediaPipe/IO: non esporre lo stacktrace
-            current_app.logger.exception("Errore snapshot live")
+            current_app.logger.exception("Errore snapshot webcam")
             flash(f"Snapshot fallito: {exc}", "error")
-            return render_template("live.html", form=form)
-        title = (form.preset_name.data or "Live snapshot").strip()[:120]
+            return render_template(template, form=form)
+        title = (form.preset_name.data or "Snapshot").strip()[:120]
         creation = Creation(
             user_id=session["user_id"], title=title,
             image_data=png_bytes, settings=json.dumps(settings),
@@ -364,11 +364,11 @@ def live():
         flash("Snapshot salvato nella galleria.", "success")
         return redirect(url_for("studio.dashboard"))
 
-    # default: save_preset
+    # default: save_preset (interscambiabile con Studio: stessa config)
     name = (form.preset_name.data or "").strip()
     if not name:
         flash("Dai un nome al preset per salvarlo.", "warning")
-        return render_template("live.html", form=form)
+        return render_template(template, form=form)
     preset = Preset(
         user_id=session["user_id"], name=name,
         config=json.dumps(settings), source="manual",
@@ -377,6 +377,37 @@ def live():
     db.session.commit()
     flash(f"Preset «{name}» salvato.", "success")
     return redirect(url_for("studio.presets"))
+
+
+@studio_bp.route("/live", methods=["GET", "POST"])
+@login_required
+def live():
+    """Live cam (color/YOLO): webcam dal browser, elaborazione su /live/frame."""
+    form = LiveForm()
+    if request.method == "GET":
+        _load_preset_into(form, "Avvia la camera.")
+        return render_template("live.html", form=form)
+    return _handle_webcam_save(form, "live.html")
+
+
+@studio_bp.route("/mediapipe", methods=["GET", "POST"])
+@login_required
+def mediapipe():
+    """Pagina MediaPipe (webcam): pose/mani/volto senza i blob color.
+
+    Stesso flusso del Live (frame su /live/frame, stato per-stream), ma
+    `detection_engine='mediapipe'` → il motore salta la detection di base."""
+    if not capabilities()["mediapipe"]:
+        flash("MediaPipe non è disponibile su questo server (solo versione locale).", "warning")
+        return redirect(url_for("studio.studio"))
+
+    form = MediaPipeForm()
+    if request.method == "GET":
+        _load_preset_into(form, "Avvia la camera.")
+        if not request.args.get("preset"):
+            form.mp_pose_enabled.data = True  # parti con qualcosa da tracciare
+        return render_template("mediapipe.html", form=form)
+    return _handle_webcam_save(form, "mediapipe.html")
 
 
 def _clamp_audio_level(value):

@@ -1,0 +1,27 @@
+{# Sezione MediaPipe (pose/mani/volto) + stile condiviso. Solo pagina MediaPipe. #}
+{% import "_controls.html" as c %}
+
+<div class="sb-section">
+  <h3 class="section-title">MediaPipe</h3>
+  <div class="grid-3">{{ c.chk(form.mp_pose_enabled) }}{{ c.chk(form.mp_hands_enabled) }}{{ c.chk(form.mp_face_enabled) }}</div>
+  {{ c.rng(form.mp_confidence, 0.1, 1.0, 0.05) }}
+  <div class="grid-2">{{ c.rng(form.mp_num_poses, 1, 6) }}{{ c.rng(form.mp_pose_num_points, 1, 33) }}</div>
+  <div class="grid-2">{{ c.rng(form.mp_hands_num_points, 1, 21) }}{{ c.rng(form.mp_num_faces, 1, 4) }}</div>
+  <div class="grid-2">{{ c.rng(form.mp_face_num_points, 1, 15) }}{{ c.rng(form.mp_blob_size, 0.5, 3.0, 0.1) }}</div>
+  {{ c.rng(form.mp_merge_distance, 0, 200) }}
+</div>
+
+<div class="sb-section">
+  <h3 class="section-title">Motion</h3>
+  {{ c.rng(form.smoothing, 0, 60) }}
+  {{ c.rng(form.persistence, 0, 100) }}
+  {{ c.chk(form.persistence_fade) }}
+  {{ c.chk(form.trails_enabled) }}
+  <div data-show-when-checked="trails_enabled">
+    {{ c.rng(form.trail_length, 5, 60) }}
+    {{ c.rng(form.trail_opacity, 0.1, 1.0, 0.05) }}
+    {{ c.sel(form.trail_style) }}
+  </div>
+</div>
+
+{% include "_style_sections.html" %}

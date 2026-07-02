@@ -1,4 +1,5 @@
-{# Sezioni di parametri condivise (Detection..MediaPipe). Richiede `form` in contesto. #}
+{# Sezioni per la detection color/YOLO (Studio, Live) + stile condiviso.
+   La sezione MediaPipe vive nella sua pagina dedicata. Richiede `form`. #}
 {% import "_controls.html" as c %}
 
 <div class="sb-section">
@@ -28,78 +29,4 @@
   </div>
 </div>
 
-<div class="sb-section">
-  <h3 class="section-title">Blob</h3>
-  {{ c.sel(form.blob_shape) }}
-  {{ c.sel(form.blob_style) }}
-  {{ c.clr(form.blob_color) }}
-  {{ c.rng(form.blob_thickness, 1, 10) }}
-  {{ c.rng(form.corner_radius, 0, 80) }}
-  {{ c.rng(form.blob_dot_gap, 2, 100) }}
-</div>
-
-<div class="sb-section">
-  <h3 class="section-title">Wireframe</h3>
-  {{ c.sel(form.wf_type) }}
-  {{ c.sel(form.wf_style) }}
-  {{ c.clr(form.wf_color) }}
-  {{ c.rng(form.wf_thickness, 1, 10) }}
-  {{ c.rng(form.wiring_density, 1, 20) }}
-  {{ c.rng(form.wf_dot_gap, 2, 100) }}
-  {{ c.sel(form.end_cap) }}
-</div>
-
-<div class="sb-section">
-  <h3 class="section-title">Center</h3>
-  {{ c.chk(form.show_center) }}
-  <div data-show-when-checked="show_center">
-    {{ c.clr(form.center_color) }}
-    <div class="grid-2">{{ c.sel(form.center_shape) }}{{ c.sel(form.center_style) }}</div>
-    {{ c.rng(form.center_size_level, 1, 5) }}
-  </div>
-</div>
-
-<div class="sb-section">
-  <h3 class="section-title">Text</h3>
-  {{ c.sel(form.label_type) }}
-  <div class="field" data-show-when="label_type:text">
-    <label class="input-label">{{ form.custom_text.label.text }}</label>
-    {{ form.custom_text() }}
-  </div>
-  {{ c.clr(form.text_color) }}
-  <div class="grid-2">{{ c.sel(form.font_weight) }}{{ c.sel(form.label_pos) }}</div>
-  {{ c.rng(form.text_size, 0.3, 2.0, 0.1) }}
-  {{ c.chk(form.text_outline) }}
-  <div data-show-when-checked="text_outline">{{ c.clr(form.text_outline_color) }}</div>
-</div>
-
-<div class="sb-section">
-  <h3 class="section-title">Inner &amp; Scene</h3>
-  {{ c.sel(form.inner_style) }}
-  {{ c.sel(form.bg_mode) }}
-  {{ c.rng(form.opacity, 0.1, 1.0, 0.05) }}
-</div>
-
-<div class="sb-section">
-  <h3 class="section-title">Glow</h3>
-  {{ c.chk(form.glow_enabled) }}
-  <div data-show-when-checked="glow_enabled">
-    {{ c.rng(form.glow_intensity, 0.0, 2.0, 0.1) }}
-    {{ c.rng(form.glow_radius, 5, 51, 2) }}
-  </div>
-</div>
-
-<div class="sb-section">
-  <h3 class="section-title">MediaPipe</h3>
-  {% if caps.mediapipe %}
-  <div class="grid-3">{{ c.chk(form.mp_pose_enabled) }}{{ c.chk(form.mp_hands_enabled) }}{{ c.chk(form.mp_face_enabled) }}</div>
-  {{ c.rng(form.mp_confidence, 0.1, 1.0, 0.05) }}
-  <div class="grid-2">{{ c.rng(form.mp_num_poses, 1, 6) }}{{ c.rng(form.mp_pose_num_points, 1, 33) }}</div>
-  <div class="grid-2">{{ c.rng(form.mp_hands_num_points, 1, 21) }}{{ c.rng(form.mp_num_faces, 1, 4) }}</div>
-  <div class="grid-2">{{ c.rng(form.mp_face_num_points, 1, 15) }}{{ c.rng(form.mp_blob_size, 0.5, 3.0, 0.1) }}</div>
-  {{ c.rng(form.mp_merge_distance, 0, 200) }}
-  {% else %}
-  <p class="form-hint">Overlay pose/mani/volto disponibile nella versione locale
-    (profilo full: <code>pip install -r requirements-local.txt</code>).</p>
-  {% endif %}
-</div>
+{% include "_style_sections.html" %}

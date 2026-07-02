@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% import "_controls.html" as c %}
+{% block title %}MediaPipe — BlobTrack{% endblock %}
+
+{% block content %}
+<div class="studio">
+  <aside class="studio-sidebar">
+    <div class="sb-header">BlobTrack<span class="tag">MEDIAPIPE</span></div>
+
+    {# id "live-form": riusa live.js (webcam → /live/frame con stato per-stream) #}
+    <form method="post" novalidate id="live-form">
+      {{ form.hidden_tag() }}  {# csrf + detection_engine nascosto ('mediapipe') #}
+      <input type="hidden" name="snapshot_raw" id="snapshot_raw" />
+
+      {# Campi di detection non usati in modalità mediapipe: inviati coi default
+         validi (il form li valida al salvataggio, ma il motore li ignora). #}
+      <div hidden>
+        {{ form.threshold(type="hidden") }}
+        {{ form.color_target_hex(type="hidden") }}
+        {{ form.color_target_tolerance(type="hidden") }}
+        {{ form.morph_kernel_size(type="hidden") }}
+        {{ form.min_blob_size(type="hidden") }}
+        {{ form.max_blob_size(type="hidden") }}
+        {{ form.max_blobs(type="hidden") }}
+        {{ form.edge_low(type="hidden") }}
+        {{ form.edge_high(type="hidden") }}
+        {{ form.preprocess_strength(type="hidden") }}
+        {{ form.tracker_match_radius(type="hidden") }}
+        <input type="hidden" name="track_mode" value="{{ form.track_mode.data }}" />
+        <input type="hidden" name="threshold_mode" value="{{ form.threshold_mode.data }}" />
+        <input type="hidden" name="yolo_model_file" value="{{ form.yolo_model_file.data }}" />
+        <input type="hidden" name="preprocess_method" value="{{ form.preprocess_method.data }}" />
+      </div>
+
+      <div class="sb-section">
+        <div class="grid-2">
+          <button type="button" class="btn btn-block" id="cam-start">Avvia camera</button>
+          <button type="button" class="btn btn-ghost btn-block" id="cam-stop" disabled>Stop</button>
+        </div>
+        <p class="form-hint" style="margin-top:8px;">
+          Traccia <strong>pose, mani e volto</strong> dalla webcam — senza i blob del
+          color engine, così niente sovrapposizioni. Spunta cosa tracciare qui sotto.
+        </p>
+      </div>
+
+      {% include "_mediapipe_sections.html" %}
+
+      <div class="sb-section">
+        <h3 class="section-title">Salva</h3>
+        <div class="field">
+          <label class="input-label">{{ form.preset_name.label.text }}</label>
+          {{ form.preset_name(placeholder="Nome preset o snapshot") }}
+        </div>
+        <button type="submit" name="action" value="save_snapshot" id="snapshot-btn"
+                class="btn btn-block" style="margin-bottom:8px;" disabled>Salva snapshot</button>
+        <button type="submit" name="action" value="save_preset" class="btn btn-ghost btn-block">Salva preset</button>
+      </div>
+    </form>
+  </aside>
+
+  <section class="studio-preview">
+    <div class="live-stage">
+      <video id="cam-video" playsinline muted></video>
+      <img id="live-output" alt="Output MediaPipe" />
+      <div class="placeholder" id="live-placeholder">Avvia la camera · muoviti · traccia pose/mani/volto</div>
+      <div class="live-hud" id="live-hud" hidden><span id="live-fps">0</span> FPS · <span id="live-transport">HTTP</span></div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/live.js') }}"></script>
+{% endblock %}

@@ -70,7 +70,9 @@ class _ConfigFieldsForm(FlaskForm):
         WTForms rifiuta così anche i POST costruiti a mano che la richiedono.
         """
         super().__init__(*args, **kwargs)
-        if not capabilities()["yolo"]:
+        # La pagina MediaPipe ridefinisce detection_engine come campo nascosto
+        # (niente choices): il filtro YOLO vale solo dove è un SelectField.
+        if hasattr(self.detection_engine, "choices") and not capabilities()["yolo"]:
             self.detection_engine.choices = [
                 c for c in self.detection_engine.choices if c[0] != "yolo"
             ]
@@ -79,7 +81,7 @@ class _ConfigFieldsForm(FlaskForm):
     detection_engine = SelectField("Engine", choices=opt.choices(opt.DETECTION_ENGINES))
     yolo_model_file = SelectField("Modello YOLO", choices=opt.choices(opt.YOLO_MODELS), default="yolov8n.pt")
     use_high_res = BooleanField("Alta risoluzione")
-    track_mode = SelectField("Canale", choices=opt.choices(opt.TRACK_MODES))
+    track_mode = SelectField("Canale", choices=opt.choices(opt.TRACK_MODES), default="luminance")
     threshold = IntegerField("Soglia", validators=[NumberRange(0, 255)], default=127)
     threshold_mode = SelectField("Modo soglia", choices=opt.choices(opt.THRESHOLD_MODES), default="fixed")
     color_target_hex = StringField("Colore target", default="#ff0000")
@@ -93,7 +95,7 @@ class _ConfigFieldsForm(FlaskForm):
 
     # Pre-processing
     preprocess_enabled = BooleanField("Pre-processing")
-    preprocess_method = SelectField("Metodo", choices=opt.choices(opt.PREPROCESS_METHODS))
+    preprocess_method = SelectField("Metodo", choices=opt.choices(opt.PREPROCESS_METHODS), default="CrowdBoost")
     preprocess_strength = FloatField("Intensità", validators=[NumberRange(0.1, 2.0)], default=1.0)
 
     # Blob
@@ -140,7 +142,13 @@ class _ConfigFieldsForm(FlaskForm):
     glow_intensity = FloatField("Intensità glow", validators=[NumberRange(0.0, 2.0)], default=1.0)
     glow_radius = IntegerField("Raggio glow", validators=[NumberRange(5, 51)], default=21)
 
-    # MediaPipe
+
+class _MediaPipeFields:
+    """Controlli MediaPipe (pose/mani/volto): SOLO la pagina MediaPipe.
+
+    Fuori di lì Studio/Live non li rendono né li inviano; il motore usa i
+    default di ProcessingConfig (MediaPipe disattivato), niente conflitti di blob.
+    """
     mp_pose_enabled = BooleanField("Pose")
     mp_hands_enabled = BooleanField("Mani")
     mp_face_enabled = BooleanField("Volto")
@@ -220,6 +228,18 @@ class LiveForm(_ConfigFieldsForm, _MotionFields, _AudioModFields):
     stabili si accumulano fra i frame. La modulazione audio usa il livello del
     microfono calcolato nel browser. `preset_name` per salvare preset/snapshot.
     """
+    preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
+    submit = SubmitField("Salva")
+
+
+class MediaPipeForm(_ConfigFieldsForm, _MediaPipeFields, _MotionFields):
+    """Pagina MediaPipe (webcam): traccia pose/mani/volto SENZA i blob color.
+
+    `detection_engine` è fisso a 'mediapipe' (campo nascosto): il motore in quella
+    modalità salta la detection di base, così i blob MediaPipe non confliggono con
+    quelli luminosi. Espone i controlli MediaPipe + lo stile di rendering.
+    """
+    detection_engine = HiddenField(default="mediapipe")
     preset_name = StringField("Nome", validators=[Optional(), Length(max=80)])
     submit = SubmitField("Salva")
 

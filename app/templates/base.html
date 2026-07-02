@@ -17,6 +17,7 @@
       {% if current_user %}
         <a href="{{ url_for('studio.studio') }}">Studio</a>
         <a href="{{ url_for('studio.live') }}">Live</a>
+        {% if caps.mediapipe %}<a href="{{ url_for('studio.mediapipe') }}">MediaPipe</a>{% endif %}
         <a href="{{ url_for('studio.dashboard') }}">Galleria</a>
         <a href="{{ url_for('studio.presets') }}">Preset</a>
         <a href="{{ url_for('assistant.assistant') }}">AI</a>
