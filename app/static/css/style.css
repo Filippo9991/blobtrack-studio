@@ -372,3 +372,31 @@ input[type="checkbox"]:checked::before, .acid-checkbox:checked::before { transfo
   background: var(--accent);
   transition: width 0.4s linear;
 }
+
+/* Galleria: barra di ricerca e paginazione */
+.search-bar {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-lg);
+}
+.search-bar input[type="search"] {
+  flex: 1;
+  max-width: 420px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 8px 12px;
+  font-family: inherit;
+}
+.pagination {
+  display: flex;
+  gap: var(--space-md);
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--space-lg);
+}
+.pagination .page-info {
+  font-size: 0.75rem;
+  color: var(--muted);
+}

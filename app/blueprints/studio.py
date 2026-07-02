@@ -20,7 +20,7 @@ from engine import capabilities
 
 from app.decorators import login_required
 from app.extensions import db
-from app.forms import DeleteForm, LiveForm, MediaPipeForm, StudioForm
+from app.forms import DeleteForm, ImportPresetForm, LiveForm, MediaPipeForm, StudioForm
 from app.models import Creation, Preset
 from app.services.frame_engine import (
     render_frame_jpeg,
@@ -209,15 +209,29 @@ def studio():
     return render_template("studio.html", form=form, preview=preview, result=None)
 
 
+GALLERY_PER_PAGE = 12  # creazioni per pagina nella galleria
+
+
 @studio_bp.route("/dashboard")
 @login_required
 def dashboard():
-    creations = (
-        Creation.query.filter_by(user_id=session["user_id"])
-        .order_by(Creation.created_at.desc())
-        .all()
+    """Galleria delle creazioni con ricerca sul titolo e paginazione."""
+    q = (request.args.get("q") or "").strip()
+    page = request.args.get("page", 1, type=int)
+
+    query = Creation.query.filter_by(user_id=session["user_id"])
+    if q:
+        query = query.filter(Creation.title.ilike(f"%{q}%"))
+    pagination = query.order_by(Creation.created_at.desc()).paginate(
+        page=page, per_page=GALLERY_PER_PAGE, error_out=False
     )
-    return render_template("dashboard.html", creations=creations, delete_form=DeleteForm())
+    return render_template(
+        "dashboard.html",
+        pagination=pagination,
+        creations=pagination.items,
+        q=q,
+        delete_form=DeleteForm(),
+    )
 
 
 @studio_bp.route("/creation/<int:creation_id>/image")
@@ -253,7 +267,10 @@ def presets():
         .order_by(Preset.created_at.desc())
         .all()
     )
-    return render_template("presets.html", presets=items, delete_form=DeleteForm())
+    return render_template(
+        "presets.html", presets=items,
+        delete_form=DeleteForm(), import_form=ImportPresetForm(),
+    )
 
 
 @studio_bp.route("/preset/<int:preset_id>/delete", methods=["POST"])
@@ -264,6 +281,120 @@ def delete_preset(preset_id):
         db.session.delete(preset)
         db.session.commit()
         flash("Preset eliminato.", "success")
+    return redirect(url_for("studio.presets"))
+
+
+# --- Export / import preset (JSON) -----------------------------------------
+PRESET_EXPORT_VERSION = 1
+
+
+def _preset_payload(presets):
+    """Struttura JSON portabile per uno o più preset."""
+    return {
+        "app": "blobtrack",
+        "type": "presets",
+        "version": PRESET_EXPORT_VERSION,
+        "presets": [
+            {"name": p.name, "source": p.source, "config": json.loads(p.config)}
+            for p in presets
+        ],
+    }
+
+
+def _json_download(payload, filename):
+    body = json.dumps(payload, indent=2, ensure_ascii=False)
+    return Response(
+        body, mimetype="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@studio_bp.route("/presets/export")
+@login_required
+def export_presets():
+    items = (
+        Preset.query.filter_by(user_id=session["user_id"])
+        .order_by(Preset.created_at.desc())
+        .all()
+    )
+    if not items:
+        flash("Non hai preset da esportare.", "warning")
+        return redirect(url_for("studio.presets"))
+    return _json_download(_preset_payload(items), "blobtrack-presets.json")
+
+
+@studio_bp.route("/preset/<int:preset_id>/export")
+@login_required
+def export_preset(preset_id):
+    from werkzeug.utils import secure_filename
+
+    p = Preset.query.filter_by(id=preset_id, user_id=session["user_id"]).first_or_404()
+    name = secure_filename(p.name) or f"preset-{p.id}"
+    return _json_download(_preset_payload([p]), f"{name}.json")
+
+
+def _clean_import_config(cfg):
+    """Tiene solo i campi noti al motore e li valida (None se non valido)."""
+    from engine import ProcessingConfig
+
+    if not isinstance(cfg, dict):
+        return None
+    allowed = set(ProcessingConfig.model_fields)
+    subset = {k: v for k, v in cfg.items() if k in allowed}
+    if not subset:
+        return None
+    try:
+        validated = ProcessingConfig(**subset).model_dump()
+    except Exception:  # config malformato: scarta il preset, non l'intero import
+        return None
+    return {k: validated[k] for k in subset}
+
+
+@studio_bp.route("/presets/import", methods=["POST"])
+@login_required
+def import_presets():
+    form = ImportPresetForm()
+    if not form.validate_on_submit():
+        errs = [e for errs in form.errors.values() for e in errs]
+        flash(errs[0] if errs else "File non valido.", "error")
+        return redirect(url_for("studio.presets"))
+
+    try:
+        data = json.loads(form.file.data.read().decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        flash("Il file non è un JSON valido.", "error")
+        return redirect(url_for("studio.presets"))
+
+    # Accetta: {presets:[...]}, una lista, o un singolo oggetto
+    if isinstance(data, dict) and isinstance(data.get("presets"), list):
+        entries = data["presets"]
+    elif isinstance(data, list):
+        entries = data
+    elif isinstance(data, dict):
+        entries = [data]
+    else:
+        entries = []
+
+    imported = 0
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        clean = _clean_import_config(entry.get("config", entry))
+        if clean is None:
+            continue
+        name = (str(entry.get("name") or "Preset importato")).strip()[:80]
+        src = entry.get("source") if entry.get("source") in ("manual", "ai") else "manual"
+        db.session.add(Preset(
+            user_id=session["user_id"], name=name,
+            config=json.dumps(clean), source=src,
+        ))
+        imported += 1
+
+    if imported:
+        db.session.commit()
+        flash(f"Importati {imported} preset.", "success")
+    else:
+        flash("Nessun preset valido trovato nel file.", "warning")
     return redirect(url_for("studio.presets"))
 
 

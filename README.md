@@ -26,8 +26,8 @@ Progetto d'esame: applicazione web completa con **Python + Flask**.
 - 🎵 **Audio reactivity** — aggiungi una traccia audio al video: beat detection e analisi RMS (librosa) modulano dimensioni, spessori e glow a tempo di musica; l'audio viene muxato nel file finale (ffmpeg)
 - 📹 **Live cam** — la webcam del browser invia i frame al server via **WebSocket** (fallback HTTP automatico) e li riceve elaborati in near-real-time; scie e tracking **persistenti per stream** e **reattività al microfono** (WebAudio); snapshot salvabili in galleria
 - 🕺 **MediaPipe** (sezione dedicata) — tracking **pose / mani / volto** dalla webcam in tempo reale, senza i blob del color engine a confliggere (detection dedicata), con tutto lo stile di rendering applicato ai punti del corpo
-- 🗂️ **Galleria personale** — le creazioni salvate come record sul database, scaricabili
-- 🎚️ **Preset di stile** — salva e riapplica le configurazioni, interscambiabili tra immagine, video e live
+- 🗂️ **Galleria personale** — le creazioni salvate come record sul database, scaricabili, con **ricerca per titolo e paginazione**
+- 🎚️ **Preset di stile** — salva e riapplica le configurazioni (interscambiabili tra immagine, video e live) ed **esporta/importa in JSON**
 - 🤖 **AI Preset Generator** — descrivi un look a parole e l'AI (Groq) costruisce il preset
 - 🔐 **Autenticazione completa** — registrazione, login, logout, eliminazione account (password hashate con `werkzeug.security`)
 - 🍪 **Banner GDPR** — consenso al trattamento dati salvato sul database
@@ -51,7 +51,7 @@ MediaPipe, reattività audio). L'app rileva le librerie presenti e adatta UI e m
 | Template | Jinja2 (con template inheritance) |
 | API esterna | Groq (LLM gratuito, endpoint OpenAI-compatibile) |
 | Deploy | Gunicorn, Render |
-| Test | pytest (48 test, capability-aware) |
+| Test | pytest (58 test, capability-aware) |
 
 ---
 
@@ -92,11 +92,11 @@ nessuna configurazione manuale.
 ### Eseguire i test
 
 ```bash
-pytest        # 48 test: auth, GDPR, studio, video (+audio, +limiti, +job), live (+stream, +mic), mediapipe, engine, AI
+pytest        # 58 test: auth, GDPR, studio, video, live, mediapipe, preset export/import, galleria (ricerca+paginazione), engine, AI
 ```
 
 La suite è capability-aware: i test che richiedono le dipendenze pesanti vengono
-saltati automaticamente sul profilo lite (44 passed, 4 skipped).
+saltati automaticamente sul profilo lite (54 passed, 4 skipped).
 
 ---
 

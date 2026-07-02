@@ -5,8 +5,20 @@
 <div class="container">
   <div class="section-head">
     <h1>Preset</h1>
-    <a href="{{ url_for('assistant.assistant') }}" class="btn">Genera con l'AI</a>
+    <div style="display:flex; gap: var(--space-sm); flex-wrap: wrap; align-items:center;">
+      {% if presets %}
+        <a href="{{ url_for('studio.export_presets') }}" class="btn btn-sm">Esporta tutti (JSON)</a>
+      {% endif %}
+      <form method="post" action="{{ url_for('studio.import_presets') }}"
+            enctype="multipart/form-data" style="display:flex; gap: var(--space-sm); align-items:center;">
+        {{ import_form.hidden_tag() }}
+        <label class="btn btn-ghost btn-sm" for="{{ import_form.file.id }}">Importa da JSON</label>
+        <div style="position:absolute; left:-9999px;">{{ import_form.file(onchange="this.form.submit()") }}</div>
+      </form>
+      <a href="{{ url_for('assistant.assistant') }}" class="btn">Genera con l'AI</a>
+    </div>
   </div>
+  {% for e in import_form.file.errors %}<div class="form-error">{{ e }}</div>{% endfor %}
 
   {% if presets %}
     <div class="grid">
@@ -19,12 +31,13 @@
             </div>
             <div class="grid-2" style="margin-top: var(--space-sm);">
               <a href="{{ url_for('studio.studio', preset=p.id) }}" class="btn btn-sm">Applica</a>
-              <form method="post" action="{{ url_for('studio.delete_preset', preset_id=p.id) }}"
-                    onsubmit="return confirm('Eliminare questo preset?');">
-                {{ delete_form.hidden_tag() }}
-                <button type="submit" class="btn btn-danger btn-sm btn-block">Elimina</button>
-              </form>
+              <a href="{{ url_for('studio.export_preset', preset_id=p.id) }}" class="btn btn-ghost btn-sm">Esporta</a>
             </div>
+            <form method="post" action="{{ url_for('studio.delete_preset', preset_id=p.id) }}"
+                  onsubmit="return confirm('Eliminare questo preset?');" style="margin-top: var(--space-sm);">
+              {{ delete_form.hidden_tag() }}
+              <button type="submit" class="btn btn-danger btn-sm btn-block">Elimina</button>
+            </form>
           </div>
         </div>
       {% endfor %}

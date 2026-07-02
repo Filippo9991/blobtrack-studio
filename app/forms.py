@@ -7,7 +7,7 @@ I parametri di stile del motore vivono in `_ConfigFieldsForm`, condivisa da Stud
 (immagine) e Video: così i preset sono interscambiabili fra i due.
 """
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileAllowed, FileField
+from flask_wtf.file import FileAllowed, FileField, FileRequired
 from wtforms import (
     BooleanField,
     FloatField,
@@ -251,6 +251,18 @@ class AIPresetForm(FlaskForm):
         "Descrivi il look che vuoi", validators=[DataRequired(), Length(min=3, max=400)]
     )
     submit = SubmitField("Genera preset")
+
+
+class ImportPresetForm(FlaskForm):
+    """Import di preset da file JSON (esportati dall'app o compatibili)."""
+    file = FileField(
+        "File preset (.json)",
+        validators=[
+            FileRequired("Scegli un file .json."),
+            FileAllowed(["json"], "Solo file JSON."),
+        ],
+    )
+    submit = SubmitField("Importa")
 
 
 class SaveAIPresetForm(FlaskForm):
