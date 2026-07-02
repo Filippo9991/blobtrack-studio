@@ -16,12 +16,21 @@ function setupCookieBanner() {
 
   form.addEventListener("submit", function (event) {
     event.preventDefault();
-    var action = (document.activeElement && document.activeElement.value) || "accept";
+    // event.submitter è il bottone premuto (affidabile anche su Safari, dove il
+    // click non sposta il focus e activeElement resterebbe il body).
+    var btn = event.submitter || document.activeElement;
+    var action = (btn && btn.value) || "accept";
     var body = new URLSearchParams();
     body.append("action", action);
-    fetch(form.action, { method: "POST", headers: { "X-Requested-With": "fetch" }, body: body })
-      .then(function () { banner.style.display = "none"; })
-      .catch(function () { form.submit(); });
+    // getAttribute, non form.action: i bottoni name="action" fanno ombra alla
+    // proprietà DOM e form.action restituirebbe l'elemento, non l'URL.
+    var url = form.getAttribute("action");
+    fetch(url, { method: "POST", headers: { "X-Requested-With": "fetch" }, body: body })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        banner.style.display = "none";
+      })
+      .catch(function () { form.submit(); }); // fallback: submit classico con reload
   });
 }
 

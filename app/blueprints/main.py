@@ -29,7 +29,8 @@ def consent():
       così la scelta persiste anche nelle sessioni future.
     """
     accepted = request.form.get("action") == "accept"
-    session["cookie_consent"] = True
+    session["cookie_consent"] = True   # scelta fatta: il banner non riappare
+    session["cookie_accepted"] = accepted  # quale scelta (il login la persiste sul DB)
 
     if accepted and session.get("user_id"):
         user = db.session.get(User, session["user_id"])

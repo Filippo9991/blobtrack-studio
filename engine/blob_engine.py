@@ -9,20 +9,24 @@ from types import SimpleNamespace
 from . import frame_processor
 from .signal_math import OneEuroFilter
 
+import logging
+
+logger = logging.getLogger("blobtrack.engine")
+
 try:
     from . import audio_processor
     AUDIO_AVAILABLE = True
 except ImportError:
     audio_processor = None
     AUDIO_AVAILABLE = False
-    print("Warning: librosa not installed. Audio reactivity disabled.")
+    logger.warning("librosa not installed. Audio reactivity disabled.")
 
 try:
     from ultralytics import YOLO
     YOLO_AVAILABLE = True
 except ImportError:
     YOLO_AVAILABLE = False
-    print("Warning: ultralytics not installed. YOLO mode disabled.")
+    logger.warning("ultralytics not installed. YOLO mode disabled.")
 
 try:
     import mediapipe as mp
@@ -32,7 +36,7 @@ try:
     _MP_MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 except ImportError:
     MP_AVAILABLE = False
-    print("Warning: mediapipe not installed. MediaPipe overlay disabled.")
+    logger.warning("mediapipe not installed. MediaPipe overlay disabled.")
 
 # --- DATA STRUCTURES ---
 @dataclass
@@ -237,7 +241,7 @@ def hex_to_bgr(hex_code):
 # --- HELPER FFMPEG (AUDIO MERGE) ---
 def merge_audio_with_ffmpeg(video_path, audio_path, offset, output_path):
     if not os.path.exists(audio_path):
-        print("Audio file not found for merge.")
+        logger.info("Audio file not found for merge.")
         return video_path
 
     temp_output = output_path.replace(".mp4", "_audio_muxed.mp4")
@@ -256,7 +260,7 @@ def merge_audio_with_ffmpeg(video_path, audio_path, offset, output_path):
     ]
     
     try:
-        print(f"Running FFmpeg merge: {' '.join(cmd)}")
+        logger.info(f"Running FFmpeg merge: {' '.join(cmd)}")
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         if os.path.exists(temp_output):
@@ -265,7 +269,7 @@ def merge_audio_with_ffmpeg(video_path, audio_path, offset, output_path):
             return video_path
             
     except Exception as e:
-        print(f"FFmpeg Merge Error: {e}")
+        logger.warning(f"FFmpeg Merge Error: {e}")
         return video_path
     
     return video_path
@@ -1425,10 +1429,10 @@ class BlobEngine:
 
     def load_model(self, model_name):
         if not YOLO_AVAILABLE:
-            print("Warning: YOLO not available")
+            logger.warning("YOLO not available")
             return None
         if self.yolo_model is None or self.current_model_name != model_name:
-            print(f"Loading YOLO Model: {model_name}")
+            logger.info(f"Loading YOLO Model: {model_name}")
             self.yolo_model = YOLO(model_name)
             self.current_model_name = model_name
         return self.yolo_model
@@ -1444,7 +1448,7 @@ class BlobEngine:
             if not ret or frame is None: raise ValueError("Frame read failed")
             return frame
         except Exception as e:
-            print(f"[RECOVERY] Reset video cap: {e}")
+            logger.warning(f"[RECOVERY] Reset video cap: {e}")
             if self.cap: self.cap.release()
             self.cap = cv2.VideoCapture(video_path)
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
@@ -1488,7 +1492,7 @@ class BlobEngine:
                         self.preview_queue.pop(0)
                     self.preview_cooldown = 4
             except Exception as e:
-                print(f"Audio error: {e}")
+                logger.warning(f"Audio error: {e}")
 
         # --- CHECK CACHE ---
         if (self.cache['frame_index'] == frame_index and
@@ -1552,7 +1556,7 @@ class BlobEngine:
                         self.energy_filter = OneEuroFilter(min_cutoff=1.0, beta=0.5)
                     preview_mod_energy = self.energy_filter.filter(frame_index / fps_prev, raw_e)
             except Exception as e:
-                print(f"Preview audio mod error: {e}")
+                logger.warning(f"Preview audio mod error: {e}")
 
         # Compute effective mod_energy for render_frame
         mod_energy = 0.0
@@ -1644,13 +1648,13 @@ def _track_blobs(blobs_raw, trackers, tracker_history, tracker_velocity, next_id
 
 
 def run_processing(config, progress_callback=None):
-    print("\n>>> ENGINE EXPORT AVVIATO.")
+    logger.info("\n>>> ENGINE EXPORT AVVIATO.")
     input_path = config['input_path']
     output_folder = config['output_folder']
 
     max_blobs = config['max_blobs']
     if config.get('audio_enabled') and not AUDIO_AVAILABLE:
-        print(">>> librosa non disponibile: reattivita' audio disattivata per questo job.")
+        logger.warning(">>> librosa non disponibile: reattivita' audio disattivata per questo job.")
         config['audio_enabled'] = False
     detection_engine = config.get('detection_engine', 'color')
     yolo_model_file = config.get('yolo_model_file', 'yolov8n.pt')
@@ -1678,7 +1682,7 @@ def run_processing(config, progress_callback=None):
         w_frame = max(2, int(w_frame * ratio) // 2 * 2)
         h_frame = max(2, int(h_frame * ratio) // 2 * 2)
         scale_to = (w_frame, h_frame)
-        print(f">>> Limite risoluzione attivo: output {w_frame}x{h_frame}.")
+        logger.info(f">>> Limite risoluzione attivo: output {w_frame}x{h_frame}.")
     limit_frames = int(config.get('limit_max_frames') or 0)
     limit_seconds = float(config.get('limit_max_seconds') or 0)
     if limit_seconds and fps > 0:
@@ -1686,13 +1690,13 @@ def run_processing(config, progress_callback=None):
         limit_frames = min(limit_frames, sec_frames) if limit_frames else sec_frames
     if limit_frames and (total_frames <= 0 or total_frames > limit_frames):
         total_frames = limit_frames
-        print(f">>> Limite durata attivo: max {limit_frames} frame.")
+        logger.info(f">>> Limite durata attivo: max {limit_frames} frame.")
 
     processor = frame_processor.FrameProcessor(config)
 
     yolo_model = None
     if detection_engine == 'yolo' and YOLO_AVAILABLE:
-        print(f">>> Caricamento Modello YOLO ({yolo_model_file})...")
+        logger.info(f">>> Caricamento Modello YOLO ({yolo_model_file})...")
         yolo_model = YOLO(yolo_model_file)
 
     filename = os.path.basename(input_path)
@@ -1743,23 +1747,23 @@ def run_processing(config, progress_callback=None):
 
     if config.get('audio_enabled') and config.get('audio_path'):
         try:
-            print(">>> Avvio Analisi Audio Precisa...")
+            logger.info(">>> Avvio Analisi Audio Precisa...")
             beat_map = audio_proc_export.analyze_beats(
                 config['audio_path'], fps,
                 band_focus=config.get('audio_band', 'bass'),
                 sensitivity=config.get('audio_sensitivity', 1.0)
             )
         except Exception as e:
-            print(f"Audio Analysis Error: {e}")
+            logger.warning(f"Audio Analysis Error: {e}")
 
     audio_features = None
     energy_filter_export = OneEuroFilter(min_cutoff=1.0, beta=0.5)
     if config.get('audio_enabled') and config.get('audio_path') and (audio_mod_size or audio_mod_thickness or audio_mod_glow):
         try:
             audio_features = audio_proc_export.analyze_full_features(config['audio_path'], fps, total_frames)
-            print(">>> Audio features estratte per modulazione continua.")
+            logger.info(">>> Audio features estratte per modulazione continua.")
         except Exception as e:
-            print(f"Audio features error: {e}")
+            logger.warning(f"Audio features error: {e}")
 
     export_queue = []
 
@@ -2041,7 +2045,7 @@ class LiveEngine:
         if not YOLO_AVAILABLE:
             return None
         if self.yolo_model is None or self.current_model_name != model_name:
-            print(f"[LiveEngine] Loading YOLO: {model_name}")
+            logger.info(f"[LiveEngine] Loading YOLO: {model_name}")
             self.yolo_model = YOLO(model_name)
             self.current_model_name = model_name
         return self.yolo_model
@@ -2151,7 +2155,7 @@ class LiveEngine:
                     )
                     mp_blobs.extend(face_blobs)
             except Exception as e:
-                print(f"[MediaPipe] blob detection error: {e}")
+                logger.warning(f"[MediaPipe] blob detection error: {e}")
 
         # 8. Combine: detection_blobs[:max_blobs] + all mp_blobs
         max_blobs = c.max_blobs

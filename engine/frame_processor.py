@@ -1,6 +1,10 @@
 import cv2
 import numpy as np
 
+import logging
+
+logger = logging.getLogger("blobtrack.engine")
+
 class FrameProcessor:
     def __init__(self, config):
         self.enabled = config.get('preprocess_enabled', False)
@@ -172,5 +176,5 @@ class FrameProcessor:
             return frame
             
         except Exception as e:
-            print(f"Preprocessing Error: {e}")
+            logger.warning(f"Preprocessing Error: {e}")
             return frame

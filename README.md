@@ -33,6 +33,7 @@ Progetto d'esame: applicazione web completa con **Python + Flask**.
 - 🍪 **Banner GDPR** — consenso al trattamento dati salvato sul database
 - ⚠️ **Pagine d'errore custom** — 404, 500, 413
 - 📱 **Design responsive** — design system "acid" con CSS custom properties, mobile-first
+- 🧱 **Robustezza** — un job video alla volta (oltre: "server occupato"), throttle per-utente sul live, pulizia automatica degli upload, video serviti da route autenticata
 
 Due profili di installazione: **lite** (deploy, solo OpenCV) e **full** (locale: YOLO,
 MediaPipe, reattività audio). L'app rileva le librerie presenti e adatta UI e motore da sola.
@@ -50,7 +51,7 @@ MediaPipe, reattività audio). L'app rileva le librerie presenti e adatta UI e m
 | Template | Jinja2 (con template inheritance) |
 | API esterna | Groq (LLM gratuito, endpoint OpenAI-compatibile) |
 | Deploy | Gunicorn, Render |
-| Test | pytest (34 test, capability-aware) |
+| Test | pytest (40 test, capability-aware) |
 
 ---
 
@@ -91,11 +92,11 @@ nessuna configurazione manuale.
 ### Eseguire i test
 
 ```bash
-pytest        # 34 test: auth, GDPR, studio, video (+audio, +limiti), live (+stream, +mic), engine, AI
+pytest        # 40 test: auth, GDPR (+persistenza consenso), studio, video (+audio, +limiti, +job slots), live (+stream, +mic, +throttle), engine, AI
 ```
 
 La suite è capability-aware: i test che richiedono le dipendenze pesanti vengono
-saltati automaticamente sul profilo lite (33 passed, 1 skipped).
+saltati automaticamente sul profilo lite (39 passed, 1 skipped).
 
 ---
 

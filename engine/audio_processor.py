@@ -3,6 +3,10 @@ import librosa
 import numpy as np
 import os
 
+import logging
+
+logger = logging.getLogger("blobtrack.engine")
+
 class AudioProcessor:
     def __init__(self):
         self.audio_path = None
@@ -18,7 +22,7 @@ class AudioProcessor:
         # Se il path o i parametri non sono cambiati drasticamente, potremmo ottimizzare,
         # ma per sicurezza ricalcoliamo se cambia la banda.
         if not os.path.exists(path):
-            print(f"Audio file not found: {path}")
+            logger.info(f"Audio file not found: {path}")
             return set()
 
         # print(f"--- ANALISI AUDIO: Band '{band_focus}' ---")

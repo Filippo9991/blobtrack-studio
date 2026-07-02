@@ -110,3 +110,20 @@ def test_live_snapshot_without_frame_warns(client, app):
     assert r.status_code == 200
     with app.app_context():
         assert Creation.query.filter_by(title="Empty").first() is None
+
+
+def test_live_frame_busy_returns_429(client, sample_png):
+    """Un frame per utente alla volta: il secondo simultaneo riceve 429."""
+    register_and_login(client, "busylive")
+    from app.blueprints import studio as studio_mod
+
+    studio_mod._live_busy_users.add(1)  # primo utente dell'app di test
+    try:
+        r = client.post(
+            "/live/frame",
+            json={"frame": _data_url(sample_png),
+                  "config": {"detection_engine": "color", "threshold_mode": "fixed"}},
+        )
+        assert r.status_code == 429
+    finally:
+        studio_mod._live_busy_users.discard(1)

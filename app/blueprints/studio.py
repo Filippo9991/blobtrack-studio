@@ -1,6 +1,7 @@
 """Studio CV: upload immagine, detection avanzata, galleria creazioni e preset."""
 import base64
 import json
+import threading
 
 from flask import (
     Blueprint,
@@ -10,6 +11,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_from_directory,
     session,
     url_for,
 )
@@ -25,7 +27,7 @@ from app.services.frame_engine import (
     render_image,
     render_live_frame_jpeg,
 )
-from app.services.video_processing import process_video
+from app.services.video_processing import VideoBusyError, process_video, uploads_dir
 
 studio_bp = Blueprint("studio", __name__)
 
@@ -198,6 +200,9 @@ def video():
         )
     try:
         result = process_video(form.video.data, settings, audio_file)
+    except VideoBusyError as exc:  # slot occupati: non è un errore del video
+        flash(str(exc), "warning")
+        return render_template("video.html", form=form, result=None)
     except Exception as exc:  # codec/IO/engine: non esporre lo stacktrace
         current_app.logger.exception("Errore di elaborazione video")
         flash(f"Elaborazione video fallita: {exc}", "error")
@@ -205,6 +210,17 @@ def video():
 
     flash("Video elaborato.", "success")
     return render_template("video.html", form=form, result=result)
+
+
+@studio_bp.route("/uploads/<filename>")
+@login_required
+def upload_file(filename):
+    """Serve i video elaborati dalla cartella upload (route protetta).
+
+    Sostituisce il vecchio link diretto a static/uploads: i file non sono più
+    raggiungibili senza login e la cartella può stare fuori da static/
+    (UPLOAD_FOLDER). send_from_directory blocca i path traversal."""
+    return send_from_directory(uploads_dir(), filename)
 
 
 def _decode_data_url(data_url):
@@ -286,6 +302,14 @@ def _clamp_audio_level(value):
         return 0.0
 
 
+# Guardia per-utente su /live/frame: il client corretto tiene UNA richiesta in
+# volo, ma un client rotto (o ostile) potrebbe martellare l'endpoint più
+# CPU-intensivo dell'app. Un solo frame in elaborazione per utente: gli altri
+# ricevono 429 e il loop del client semplicemente salta il frame.
+_live_busy_lock = threading.Lock()
+_live_busy_users = set()
+
+
 @studio_bp.route("/live/frame", methods=["POST"])
 @login_required
 def live_frame():
@@ -303,9 +327,15 @@ def live_frame():
     config = data.get("config") or {}
     stream = str(data.get("stream") or "")[:64]
     audio_level = _clamp_audio_level(data.get("audio_level"))
+
+    uid = session["user_id"]
+    with _live_busy_lock:
+        if uid in _live_busy_users:
+            return {"error": "Frame precedente ancora in elaborazione."}, 429
+        _live_busy_users.add(uid)
     try:
         if stream:
-            session_key = f"{session['user_id']}:{stream}"
+            session_key = f"{uid}:{stream}"
             jpeg = render_live_frame_jpeg(raw, config, session_key, audio_level=audio_level)
         else:  # client senza stream id: elaborazione stateless come prima
             jpeg = render_frame_jpeg(raw, config)
@@ -314,5 +344,8 @@ def live_frame():
     except Exception:  # YOLO/MediaPipe possono fallire: non esporre lo stacktrace
         current_app.logger.exception("Errore di elaborazione live")
         return {"error": "Elaborazione fallita."}, 500
+    finally:
+        with _live_busy_lock:
+            _live_busy_users.discard(uid)
 
     return Response(jpeg, mimetype="image/jpeg")

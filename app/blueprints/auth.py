@@ -47,8 +47,19 @@ def login():
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data).first()
         if user and user.check_password(form.password.data):
+            # Il consenso cookie dato da anonimi vive in sessione: session.clear()
+            # lo cancellerebbe (e il banner riapparirebbe). Lo si preserva, e se
+            # era un "accetta" lo si persiste sul DB ora che sappiamo chi è.
+            consent_done = bool(session.get("cookie_consent"))
+            consent_accepted = bool(session.get("cookie_accepted"))
             session.clear()
             session["user_id"] = user.id
+            if consent_done:
+                session["cookie_consent"] = True
+                session["cookie_accepted"] = consent_accepted
+                if consent_accepted and not user.cookie_consent:
+                    user.cookie_consent = True
+                    db.session.commit()
             flash(f"Bentornato, {user.username}!", "success")
             next_url = request.args.get("next")
             # Evita open redirect: accetta solo path interni

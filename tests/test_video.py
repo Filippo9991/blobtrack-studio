@@ -67,7 +67,7 @@ def test_video_processing_produces_playable_output(client, app):
     assert b"uploads/" in r.data  # link al video risultante
 
     # il file output esiste in static/uploads ed è leggibile come video
-    uploads = os.path.join(app.static_folder, "uploads")
+    uploads = app.config["UPLOAD_FOLDER"]
     mp4s = [f for f in os.listdir(uploads) if f.endswith(".mp4") and not f.startswith("_in_")]
     assert mp4s, "nessun video di output prodotto"
     cap = cv2.VideoCapture(os.path.join(uploads, sorted(mp4s)[-1]))
@@ -96,7 +96,7 @@ def test_video_limits_cap_resolution_and_duration(client, app):
 
         match = re.search(rb"uploads/([0-9a-f]+\.mp4)", r.data)
         assert match, "nome del video di output non trovato nella pagina"
-        out = os.path.join(app.static_folder, "uploads", match.group(1).decode())
+        out = os.path.join(app.config["UPLOAD_FOLDER"], match.group(1).decode())
         cap = cv2.VideoCapture(out)
         assert int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) == 160
         assert int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) == 120
@@ -137,9 +137,47 @@ def test_video_audio_reactivity_produces_output(client, app):
     assert r.status_code == 200
     assert b"Video elaborato" in r.data
 
-    uploads = os.path.join(app.static_folder, "uploads")
+    uploads = app.config["UPLOAD_FOLDER"]
     # niente file temporanei audio/input lasciati indietro
     assert not [f for f in os.listdir(uploads) if f.startswith(("_in_", "_aud_"))]
     mp4s = [f for f in os.listdir(uploads) if f.endswith(".mp4") and not f.startswith("_")]
     cap = cv2.VideoCapture(os.path.join(uploads, sorted(mp4s)[-1]))
     assert int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) > 0
+
+
+def test_video_busy_returns_friendly_warning(client, monkeypatch):
+    """A slot pieni il server risponde 'occupato' invece di accodare il job."""
+    import threading
+
+    from app.services import video_processing as vp
+
+    monkeypatch.setattr(vp, "_job_slots", threading.Semaphore(0))  # tutto occupato
+    register_and_login(client, "vidbusy")
+    data = dict(VBASE)
+    data["video"] = (io.BytesIO(_tiny_mp4_bytes()), "clip.mp4")
+    r = client.post("/video", data=data, content_type="multipart/form-data")
+    assert r.status_code == 200
+    assert "sta già elaborando".encode() in r.data
+    assert b"Video elaborato" not in r.data
+
+
+def test_uploads_route_requires_login(client):
+    r = client.get("/uploads/qualcosa.mp4")
+    assert r.status_code == 302 and "/login" in r.headers["Location"]
+
+
+def test_uploads_cleanup_removes_stale_files(client, app):
+    """I file più vecchi della ritenzione vengono eliminati all'avvio di un job."""
+    register_and_login(client, "vidclean")
+    uploads = app.config["UPLOAD_FOLDER"]
+    os.makedirs(uploads, exist_ok=True)
+    stale = os.path.join(uploads, "vecchio.mp4")
+    with open(stale, "wb") as fh:
+        fh.write(b"x")
+    os.utime(stale, (0, 0))  # epoca 1970: ben oltre la ritenzione
+
+    data = dict(VBASE)
+    data["video"] = (io.BytesIO(_tiny_mp4_bytes()), "clip.mp4")
+    r = client.post("/video", data=data, content_type="multipart/form-data")
+    assert r.status_code == 200 and b"Video elaborato" in r.data
+    assert not os.path.exists(stale)

@@ -15,8 +15,11 @@ from app import create_app  # noqa: E402
 
 
 @pytest.fixture
-def app():
-    return create_app("testing")
+def app(tmp_path):
+    app = create_app("testing")
+    # Upload su cartella temporanea: i test non sporcano app/static/uploads
+    app.config["UPLOAD_FOLDER"] = str(tmp_path / "uploads")
+    return app
 
 
 @pytest.fixture

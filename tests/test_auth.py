@@ -69,3 +69,32 @@ def test_custom_404(client):
     r = client.get("/nope")
     assert r.status_code == 404
     assert b"404" in r.data
+
+
+def test_consent_accepted_before_login_persists_to_db(client, app):
+    """Regressione: il consenso dato da anonimi deve sopravvivere a session.clear()
+    del login e finire sul DB (prima il banner riappariva dopo il login)."""
+    client.post(
+        "/register",
+        data=dict(username="gdpr", email="gdpr@test.com", password="secret1", confirm="secret1"),
+    )
+    client.post("/consent", data={"action": "accept"})          # da anonimo
+    client.post("/login", data=dict(username="gdpr", password="secret1"))
+
+    assert b"cookie-banner" not in client.get("/").data          # niente banner
+    with app.app_context():
+        assert User.query.filter_by(username="gdpr").first().cookie_consent is True
+
+
+def test_consent_rejected_hides_banner_but_not_saved_as_accept(client, app):
+    """Il rifiuto nasconde il banner in sessione ma NON marca il consenso sul DB."""
+    client.post(
+        "/register",
+        data=dict(username="nogdpr", email="nogdpr@test.com", password="secret1", confirm="secret1"),
+    )
+    client.post("/consent", data={"action": "reject"})
+    client.post("/login", data=dict(username="nogdpr", password="secret1"))
+
+    assert b"cookie-banner" not in client.get("/").data          # scelta rispettata
+    with app.app_context():
+        assert User.query.filter_by(username="nogdpr").first().cookie_consent is False

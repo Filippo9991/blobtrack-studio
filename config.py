@@ -35,6 +35,15 @@ class Config:
     VIDEO_MAX_SECONDS = int(os.environ.get("VIDEO_MAX_SECONDS", "0"))
     VIDEO_MAX_DIM = int(os.environ.get("VIDEO_MAX_DIM", "0"))
 
+    # Job video concorrenti (CPU-bound, minuti l'uno): oltre questo numero il
+    # server risponde "occupato" invece di accodare fino al timeout.
+    VIDEO_MAX_JOBS = int(os.environ.get("VIDEO_MAX_JOBS", "1"))
+
+    # Cartella dei file elaborati (default: app/static/uploads) e ritenzione:
+    # i file più vecchi vengono eliminati all'avvio di ogni nuovo job.
+    UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER")
+    UPLOADS_MAX_AGE_HOURS = float(os.environ.get("UPLOADS_MAX_AGE_HOURS", "24"))
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
@@ -48,6 +57,11 @@ class ProductionConfig(Config):
     MAX_CONTENT_LENGTH = 32 * 1024 * 1024
     VIDEO_MAX_SECONDS = int(os.environ.get("VIDEO_MAX_SECONDS", "15"))
     VIDEO_MAX_DIM = int(os.environ.get("VIDEO_MAX_DIM", "480"))
+
+    # I cookie di sessione viaggiano solo su HTTPS (Render termina TLS) e mai
+    # in richieste cross-site.
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = "Lax"
 
     # Render/Heroku usano DATABASE_URL e il formato postgres:// che SQLAlchemy
     # non accetta più: va convertito in postgresql://.
