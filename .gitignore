@@ -18,6 +18,8 @@ app/static/uploads/*
 
 # Archived legacy project (not deployed, kept local only)
 legacy/
+# Esperimento legacy in Dart (Supabase+OpenAI), estraneo al progetto d'esame
+supabase_ai/
 
 # OS
 .DS_Store
