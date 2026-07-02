@@ -46,7 +46,7 @@ MediaPipe, reattività audio). L'app rileva le librerie presenti e adatta UI e m
 |--------|-----------|
 | Backend | Python 3.11, Flask, Flask-SQLAlchemy, Flask-WTF |
 | Database | SQLite (sviluppo) · PostgreSQL (produzione) |
-| Computer vision | OpenCV (`opencv-contrib-python-headless`), NumPy, ultralytics (YOLO), MediaPipe |
+| Computer vision | OpenCV (`opencv-contrib-python-headless`), NumPy, ultralytics (YOLOv8 + YOLO11), MediaPipe |
 | Audio | librosa (beat detection / RMS), ffmpeg (mux) |
 | Template | Jinja2 (con template inheritance) |
 | API esterna | Groq (LLM gratuito, endpoint OpenAI-compatibile) |

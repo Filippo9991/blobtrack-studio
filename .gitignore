@@ -27,9 +27,11 @@ supabase_ai/
 # Claude Code local settings
 .claude/
 
-# YOLO weights: solo yolov8n (default leggero) è committato; m/x auto-download a runtime
+# YOLO weights: solo yolov8n (default leggero) è committato; gli altri
+# (yolov8 m/x, tutti gli YOLO11) si auto-scaricano a runtime.
 yolov8m.pt
 yolov8x.pt
+yolo11*.pt
 
 # Recap di lavoro (locale, non parte del repo d'esame)
 RECAP.md

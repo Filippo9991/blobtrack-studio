@@ -4,7 +4,13 @@ Riflettono i valori supportati dal motore (blob_engine.py / schemas.ProcessingCo
 """
 
 DETECTION_ENGINES = ["color", "yolo"]
-YOLO_MODELS = ["yolov8n.pt", "yolov8m.pt", "yolov8x.pt"]
+# yolov8n.pt è l'unico peso committato (default, offline). I modelli YOLO11
+# (generazione più recente) si scaricano automaticamente alla prima selezione.
+YOLO_MODELS = [
+    "yolov8n.pt",
+    "yolo11n.pt", "yolo11s.pt", "yolo11m.pt",
+    "yolov8m.pt", "yolov8x.pt",
+]
 TRACK_MODES = [
     "luminance", "red", "green", "blue", "average",
     "hsv_hue", "hsv_saturation", "hsv_value",
