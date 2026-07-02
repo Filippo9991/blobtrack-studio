@@ -23,7 +23,7 @@ Progetto d'esame: applicazione web completa con **Python + Flask**.
 ## ✨ Funzionalità
 
 - 🖼️ **Studio immagine** — upload → blob detection (color engine o YOLO) + styling completo: forme, wireframe, colormap interne, glow, etichette, ~60 parametri regolabili
-- 🎬 **Video processing** — upload di un video → elaborazione frame-per-frame con tracker e scie di movimento → download MP4 (H.264)
+- 🎬 **Video processing** — anteprima immediata del sorgente e **anteprima del frame stilizzato** prima del render; elaborazione **asincrona con barra di avanzamento** (progress dal motore) → player + download MP4 (H.264)
 - 🎵 **Audio reactivity** — aggiungi una traccia audio al video: beat detection e analisi RMS (librosa) modulano dimensioni, spessori e glow a tempo di musica; l'audio viene muxato nel file finale (ffmpeg)
 - 📹 **Live cam** — la webcam del browser invia i frame al server via **WebSocket** (fallback HTTP automatico) e li riceve elaborati in near-real-time; scie e tracking **persistenti per stream** e **reattività al microfono** (WebAudio); snapshot salvabili in galleria
 - 🗂️ **Galleria personale** — le creazioni salvate come record sul database, scaricabili
@@ -51,7 +51,7 @@ MediaPipe, reattività audio). L'app rileva le librerie presenti e adatta UI e m
 | Template | Jinja2 (con template inheritance) |
 | API esterna | Groq (LLM gratuito, endpoint OpenAI-compatibile) |
 | Deploy | Gunicorn, Render |
-| Test | pytest (40 test, capability-aware) |
+| Test | pytest (43 test, capability-aware) |
 
 ---
 
@@ -92,11 +92,11 @@ nessuna configurazione manuale.
 ### Eseguire i test
 
 ```bash
-pytest        # 40 test: auth, GDPR (+persistenza consenso), studio, video (+audio, +limiti, +job slots), live (+stream, +mic, +throttle), engine, AI
+pytest        # 43 test: auth, GDPR (+persistenza consenso), studio, video (+audio, +limiti, +job slots), live (+stream, +mic, +throttle), engine, AI
 ```
 
 La suite è capability-aware: i test che richiedono le dipendenze pesanti vengono
-saltati automaticamente sul profilo lite (39 passed, 1 skipped).
+saltati automaticamente sul profilo lite (42 passed, 1 skipped).
 
 ---
 

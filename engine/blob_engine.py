@@ -1702,11 +1702,12 @@ def run_processing(config, progress_callback=None):
     filename = os.path.basename(input_path)
     out_name = f"EXP_V18_{detection_engine}_{filename}"
     out_path = os.path.join(output_folder, out_name)
-    try:
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')
-    except Exception:
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out_video = cv2.VideoWriter(out_path, fourcc, fps, (w_frame, h_frame))
+    # H.264 (avc1) è riproducibile nel browser; se il build OpenCV non lo
+    # supporta il writer NON si apre (nessuna eccezione!) → fallback mp4v.
+    out_video = cv2.VideoWriter(out_path, cv2.VideoWriter_fourcc(*'avc1'), fps, (w_frame, h_frame))
+    if not out_video.isOpened():
+        logger.warning("Codec avc1 non disponibile: uso mp4v (video scaricabile ma non riproducibile inline).")
+        out_video = cv2.VideoWriter(out_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w_frame, h_frame))
 
     next_id = 0
     trackers = {}

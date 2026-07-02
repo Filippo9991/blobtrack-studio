@@ -27,7 +27,13 @@ from app.services.frame_engine import (
     render_image,
     render_live_frame_jpeg,
 )
-from app.services.video_processing import VideoBusyError, process_video, uploads_dir
+from app.services.video_processing import (
+    VideoBusyError,
+    get_job,
+    process_video,
+    start_video_job,
+    uploads_dir,
+)
 
 studio_bp = Blueprint("studio", __name__)
 
@@ -134,8 +140,15 @@ def dashboard():
 @studio_bp.route("/creation/<int:creation_id>/image")
 @login_required
 def creation_image(creation_id):
+    """L'immagine di una creazione; con ?download=1 arriva come file scaricato."""
+    from werkzeug.utils import secure_filename
+
     creation = Creation.query.filter_by(id=creation_id, user_id=session["user_id"]).first_or_404()
-    return Response(creation.image_data, mimetype="image/png")
+    headers = {}
+    if request.args.get("download") == "1":
+        name = secure_filename(creation.title) or f"creazione-{creation.id}"
+        headers["Content-Disposition"] = f'attachment; filename="{name}.png"'
+    return Response(creation.image_data, mimetype="image/png", headers=headers)
 
 
 @studio_bp.route("/creation/<int:creation_id>/delete", methods=["POST"])
@@ -183,9 +196,24 @@ def video():
             if preset:
                 _apply_settings_to_form(form, json.loads(preset.config))
                 flash(f"Preset «{preset.name}» caricato.", "success")
+
+        # Risultato di un job asincrono concluso (il JS reindirizza qui)
+        job_id = request.args.get("job")
+        if job_id:
+            job = get_job(job_id, session["user_id"])
+            if job and job["state"] == "done":
+                return render_template("video.html", form=form, result=job["result"])
+            flash("Elaborazione non trovata o non ancora conclusa.", "warning")
         return render_template("video.html", form=form, result=None)
 
+    # Il percorso normale è ASINCRONO (il JS invia con questo header e fa
+    # polling su /video/status); il POST classico resta come fallback no-JS.
+    is_fetch = request.headers.get("X-Requested-With") == "fetch"
+
     if not form.validate_on_submit():
+        if is_fetch:
+            msgs = [e for errs in form.errors.values() for e in errs]
+            return {"error": " ".join(msgs) or "Dati non validi."}, 400
         return render_template("video.html", form=form, result=None)
 
     settings = _form_to_settings(form)
@@ -198,6 +226,17 @@ def video():
             "il video è stato elaborato senza traccia.",
             "warning",
         )
+
+    if is_fetch:
+        try:
+            job_id = start_video_job(form.video.data, settings, audio_file, session["user_id"])
+        except VideoBusyError as exc:
+            return {"error": str(exc)}, 429
+        except Exception:
+            current_app.logger.exception("Avvio job video fallito")
+            return {"error": "Avvio dell'elaborazione fallito."}, 500
+        return {"job": job_id}
+
     try:
         result = process_video(form.video.data, settings, audio_file)
     except VideoBusyError as exc:  # slot occupati: non è un errore del video
@@ -212,6 +251,21 @@ def video():
     return render_template("video.html", form=form, result=result)
 
 
+@studio_bp.route("/video/status/<job_id>")
+@login_required
+def video_status(job_id):
+    """Stato di un job asincrono (polling dal client, solo il proprietario)."""
+    job = get_job(job_id, session["user_id"])
+    if not job:
+        return {"error": "Elaborazione non trovata."}, 404
+    payload = {"state": job["state"], "progress": round(job["progress"], 3)}
+    if job["state"] == "done":
+        payload["redirect"] = url_for("studio.video", job=job_id)
+    elif job["state"] == "error":
+        payload["error"] = job["error"]
+    return payload
+
+
 @studio_bp.route("/uploads/<filename>")
 @login_required
 def upload_file(filename):
@@ -219,7 +273,13 @@ def upload_file(filename):
 
     Sostituisce il vecchio link diretto a static/uploads: i file non sono più
     raggiungibili senza login e la cartella può stare fuori da static/
-    (UPLOAD_FOLDER). send_from_directory blocca i path traversal."""
+    (UPLOAD_FOLDER). send_from_directory blocca i path traversal.
+    Con ?download=1 forza il download (Content-Disposition: attachment)."""
+    if request.args.get("download") == "1":
+        return send_from_directory(
+            uploads_dir(), filename,
+            as_attachment=True, download_name=f"blobtrack-{filename}",
+        )
     return send_from_directory(uploads_dir(), filename)
 
 

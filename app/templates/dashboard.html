@@ -16,11 +16,15 @@
           <div class="tile-body">
             <div class="tile-title">{{ c.title }}</div>
             <div class="tile-meta">{{ c.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
-            <form method="post" action="{{ url_for('studio.delete_creation', creation_id=c.id) }}"
-                  onsubmit="return confirm('Eliminare questa creazione?');" style="margin-top: var(--space-sm);">
-              {{ delete_form.hidden_tag() }}
-              <button type="submit" class="btn btn-danger btn-sm">Elimina</button>
-            </form>
+            <div style="display:flex; gap: var(--space-sm); margin-top: var(--space-sm);">
+              <a href="{{ url_for('studio.creation_image', creation_id=c.id, download=1) }}"
+                 class="btn btn-sm">Scarica</a>
+              <form method="post" action="{{ url_for('studio.delete_creation', creation_id=c.id) }}"
+                    onsubmit="return confirm('Eliminare questa creazione?');">
+                {{ delete_form.hidden_tag() }}
+                <button type="submit" class="btn btn-danger btn-sm">Elimina</button>
+              </form>
+            </div>
           </div>
         </div>
       {% endfor %}

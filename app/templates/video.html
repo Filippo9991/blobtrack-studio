@@ -68,18 +68,49 @@
   </aside>
 
   <section class="studio-preview">
-    {% if result %}
-      <div style="text-align:center;">
-        <video controls autoplay loop style="max-width:100%; max-height:70vh; border:1px solid var(--line);">
-          <source src="{{ url_for('studio.upload_file', filename=result) }}" type="video/mp4" />
-        </video>
-        <div style="margin-top: var(--space-md);">
-          <a href="{{ url_for('studio.upload_file', filename=result) }}" download class="btn">Scarica video</a>
+    <div id="video-stage" style="width:100%; text-align:center;">
+      {% if result %}
+        {# Risultato del render: scaricabile; scegliendo un nuovo file sparisce #}
+        <div id="result-box">
+          <video controls autoplay loop style="max-width:100%; max-height:70vh; border:1px solid var(--line);">
+            <source src="{{ url_for('studio.upload_file', filename=result) }}" type="video/mp4" />
+          </video>
+          <div style="margin-top: var(--space-md);">
+            <a href="{{ url_for('studio.upload_file', filename=result, download=1) }}" class="btn">Scarica video</a>
+          </div>
         </div>
+      {% else %}
+        <div class="placeholder" id="video-placeholder">Carica un video · regola i parametri · premi Elabora video</div>
+      {% endif %}
+
+      {# Anteprima sorgente: riempita dal JS con l'object URL del file scelto #}
+      <video id="src-preview" controls muted loop playsinline hidden
+             style="max-width:100%; max-height:42vh; border:1px solid var(--line);"></video>
+
+      <div id="preview-actions" hidden style="margin-top: var(--space-md);">
+        <button type="button" class="btn" id="btn-frame-preview">Anteprima frame</button>
+        <p class="form-hint" style="margin-top:6px;">Metti in pausa il video sul punto che
+          vuoi provare: l'anteprima elabora il frame corrente con i parametri della sidebar.</p>
       </div>
-    {% else %}
-      <div class="placeholder">Carica un video · regola i parametri · premi Elabora video</div>
-    {% endif %}
+
+      <div id="frame-preview-wrap" hidden style="margin-top: var(--space-md);">
+        <img id="frame-preview" alt="Frame elaborato con i parametri correnti"
+             style="max-width:100%; max-height:42vh; border:1px solid var(--line);" />
+      </div>
+
+      <div id="job-progress" hidden style="margin-top: var(--space-lg);">
+        <div class="progress"><div class="progress-fill" id="progress-fill"></div></div>
+        <p class="form-hint" style="margin-top:6px;">
+          <span id="progress-label">0%</span> — elaborazione in corso, resta su questa pagina…
+        </p>
+      </div>
+
+      <div id="job-error" class="form-error" hidden style="margin-top: var(--space-md);"></div>
+    </div>
   </section>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/video.js') }}"></script>
 {% endblock %}

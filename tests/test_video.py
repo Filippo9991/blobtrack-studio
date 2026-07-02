@@ -181,3 +181,73 @@ def test_uploads_cleanup_removes_stale_files(client, app):
     r = client.post("/video", data=data, content_type="multipart/form-data")
     assert r.status_code == 200 and b"Video elaborato" in r.data
     assert not os.path.exists(stale)
+
+
+def test_video_async_job_with_progress_and_download(client, app):
+    """Percorso asincrono: job id → polling → done → pagina risultato → download."""
+    import re
+    import time as _time
+
+    register_and_login(client, "vidasync")
+    data = dict(VBASE)
+    data["video"] = (io.BytesIO(_tiny_mp4_bytes()), "clip.mp4")
+    r = client.post("/video", data=data, content_type="multipart/form-data",
+                    headers={"X-Requested-With": "fetch"})
+    assert r.status_code == 200
+    job = r.get_json()["job"]
+
+    status = None
+    for _ in range(150):  # il clip di test si elabora in ~1s
+        status = client.get(f"/video/status/{job}").get_json()
+        if status["state"] != "running":
+            break
+        _time.sleep(0.1)
+    assert status["state"] == "done", status
+    assert status["progress"] == 1.0 and "redirect" in status
+
+    page = client.get(status["redirect"])
+    assert b"Scarica video" in page.data
+
+    name = re.search(rb"uploads/([0-9a-f]+\.mp4)", page.data).group(1).decode()
+    dl = client.get(f"/uploads/{name}?download=1")
+    assert dl.status_code == 200
+    assert "attachment" in dl.headers.get("Content-Disposition", "")
+
+
+def test_video_job_status_is_private(client):
+    """Lo stato del job è consultabile solo dal proprietario."""
+    import time as _time
+
+    register_and_login(client, "vidowner")
+    data = dict(VBASE)
+    data["video"] = (io.BytesIO(_tiny_mp4_bytes()), "clip.mp4")
+    job = client.post("/video", data=data, content_type="multipart/form-data",
+                      headers={"X-Requested-With": "fetch"}).get_json()["job"]
+    for _ in range(150):  # lascialo finire: niente job appesi fra i test
+        if client.get(f"/video/status/{job}").get_json()["state"] != "running":
+            break
+        _time.sleep(0.1)
+
+    client.get("/logout")
+    register_and_login(client, "vidintruder")
+    assert client.get(f"/video/status/{job}").status_code == 404
+
+
+def test_creation_image_download_disposition(client, app):
+    """?download=1 forza l'attachment; senza, l'immagine resta inline."""
+    from app.extensions import db as _db
+    from app.models import Creation, User
+
+    register_and_login(client, "dlimg")
+    with app.app_context():
+        uid = User.query.filter_by(username="dlimg").first().id
+        c = Creation(user_id=uid, title="Opera Uno", image_data=b"\x89PNG\r\n", settings="{}")
+        _db.session.add(c)
+        _db.session.commit()
+        cid = c.id
+
+    r = client.get(f"/creation/{cid}/image?download=1")
+    assert "attachment" in r.headers.get("Content-Disposition", "")
+    assert 'filename="Opera_Uno.png"' in r.headers["Content-Disposition"]
+    r2 = client.get(f"/creation/{cid}/image")
+    assert "Content-Disposition" not in r2.headers

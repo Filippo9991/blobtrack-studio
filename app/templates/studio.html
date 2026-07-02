@@ -34,7 +34,12 @@
 
   <section class="studio-preview">
     {% if preview %}
-      <img src="{{ preview }}" alt="Anteprima elaborata" />
+      <div style="text-align:center;">
+        <img src="{{ preview }}" alt="Anteprima elaborata" />
+        <div style="margin-top: var(--space-md);">
+          <a href="{{ preview }}" download="blobtrack-anteprima.png" class="btn">Scarica immagine</a>
+        </div>
+      </div>
     {% else %}
       <div class="placeholder">Carica un'immagine · regola i parametri · premi Anteprima</div>
     {% endif %}

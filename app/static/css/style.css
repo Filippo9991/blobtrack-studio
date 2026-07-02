@@ -359,3 +359,16 @@ input[type="checkbox"]:checked::before, .acid-checkbox:checked::before { transfo
   .cookie-banner { flex-direction: column; align-items: stretch; text-align: center; }
   .cookie-actions { justify-content: center; }
 }
+
+/* Barra di avanzamento (elaborazione video asincrona) */
+.progress {
+  height: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.progress-fill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.4s linear;
+}
